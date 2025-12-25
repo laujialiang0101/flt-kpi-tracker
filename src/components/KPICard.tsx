@@ -9,7 +9,7 @@ interface KPICardProps {
   achievement?: number
   trend?: number
   icon: React.ReactNode
-  color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'indigo'
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'teal' | 'indigo' | 'pink' | 'red'
 }
 
 const colorClasses = {
@@ -19,6 +19,8 @@ const colorClasses = {
   orange: 'bg-orange-50 text-orange-600',
   teal: 'bg-teal-50 text-teal-600',
   indigo: 'bg-indigo-50 text-indigo-600',
+  pink: 'bg-pink-50 text-pink-600',
+  red: 'bg-red-50 text-red-600',
 }
 
 const progressColors = {
@@ -28,6 +30,8 @@ const progressColors = {
   orange: 'bg-orange-500',
   teal: 'bg-teal-500',
   indigo: 'bg-indigo-500',
+  pink: 'bg-pink-500',
+  red: 'bg-red-500',
 }
 
 export default function KPICard({

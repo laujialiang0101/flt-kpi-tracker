@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Users, ShoppingCart, Award, Target, RefreshCw } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, ShoppingCart, Award, Target, RefreshCw, Tag, Percent } from 'lucide-react'
 import KPICard from '@/components/KPICard'
 import SalesChart from '@/components/SalesChart'
 import RankingBadge from '@/components/RankingBadge'
@@ -18,8 +18,10 @@ const demoKPIData = {
     total_sales: 45680.50,
     house_brand: 5240.00,
     focused_1: 2890.00,
-    focused_2_3: 1670.00,
-    pwp_clearance: 890.50,
+    focused_2: 980.00,
+    focused_3: 690.00,
+    pwp: 540.50,
+    clearance: 350.00,
     transactions: 342,
     gross_profit: 12450.00
   },
@@ -142,7 +144,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Total Sales"
           value={formatRM(data.kpis.total_sales)}
@@ -150,7 +152,7 @@ export default function Dashboard() {
           color="blue"
         />
         <KPICard
-          title="House Brand Sales"
+          title="House Brand"
           value={formatRM(data.kpis.house_brand)}
           icon={<Award className="w-6 h-6" />}
           color="green"
@@ -162,16 +164,28 @@ export default function Dashboard() {
           color="purple"
         />
         <KPICard
-          title="Focused Items 2 & 3"
-          value={formatRM(data.kpis.focused_2_3)}
+          title="Focused Item 2"
+          value={formatRM(data.kpis.focused_2 || 0)}
           icon={<Target className="w-6 h-6" />}
           color="orange"
         />
         <KPICard
-          title="PWP + Clearance"
-          value={formatRM(data.kpis.pwp_clearance)}
-          icon={<TrendingUp className="w-6 h-6" />}
+          title="Focused Item 3"
+          value={formatRM(data.kpis.focused_3 || 0)}
+          icon={<Target className="w-6 h-6" />}
+          color="pink"
+        />
+        <KPICard
+          title="PWP"
+          value={formatRM(data.kpis.pwp || 0)}
+          icon={<Tag className="w-6 h-6" />}
           color="teal"
+        />
+        <KPICard
+          title="Stock Clearance"
+          value={formatRM(data.kpis.clearance || 0)}
+          icon={<Percent className="w-6 h-6" />}
+          color="red"
         />
         <KPICard
           title="Transactions"
