@@ -75,7 +75,7 @@ export default function TeamPage() {
       const startDate = `${year}-${month}-01`
       const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0]
 
-      const result = await fetchTeamOverview(user.outlet_id, startDate, endDate)
+      const result = await fetchTeamOverview(user.outlet_id, user.group_id || undefined, startDate, endDate)
 
       if (result.success) {
         setTeamData(result.data)

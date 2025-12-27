@@ -21,8 +21,9 @@ export async function fetchLeaderboard(scope: 'outlet' | 'company', outletId?: s
   return res.json()
 }
 
-export async function fetchTeamOverview(outletId: string, startDate?: string, endDate?: string) {
+export async function fetchTeamOverview(outletId: string, groupId?: string, startDate?: string, endDate?: string) {
   const params = new URLSearchParams({ outlet_id: outletId })
+  if (groupId) params.append('group_id', groupId)
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
 

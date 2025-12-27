@@ -6,7 +6,8 @@ interface User {
   code: string
   name: string
   role: string
-  outlet_id: string | null
+  outlet_id: string | null  // Physical outlet where sales are made
+  group_id: string | null   // Staff team/group for filtering
   is_supervisor: boolean
   user_group: string | null
   permissions: {
