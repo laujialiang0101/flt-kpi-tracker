@@ -65,7 +65,7 @@ export default function Leaderboard() {
     setError(null)
 
     try {
-      const outletId = scope === 'outlet' ? user?.outlet_id : undefined
+      const outletId = scope === 'outlet' ? user?.outlet_id || undefined : undefined
       const result = await fetchLeaderboard(scope, outletId, selectedMonth)
 
       if (result.success) {
