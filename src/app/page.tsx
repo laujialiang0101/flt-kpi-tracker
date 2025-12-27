@@ -1,74 +1,88 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, TrendingDown, Users, ShoppingCart, Award, Target, RefreshCw, Tag, Percent } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Users, ShoppingCart, Award, Target, RefreshCw, Tag, Percent, DollarSign } from 'lucide-react'
 import KPICard from '@/components/KPICard'
 import SalesChart from '@/components/SalesChart'
 import RankingBadge from '@/components/RankingBadge'
-import { fetchMyDashboard } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
+import { fetchMyDashboard, fetchMyTargets, fetchMyCommission } from '@/lib/api'
 
-// Demo data fallback
-const demoKPIData = {
-  staff_id: 'SM001',
-  staff_name: 'Demo User',
-  outlet_id: 'FLT001',
-  outlet_name: 'Farmasi Lautan Demo',
-  period: { start: '2024-12-01', end: '2024-12-31' },
-  kpis: {
-    total_sales: 45680.50,
-    house_brand: 5240.00,
-    focused_1: 2890.00,
-    focused_2: 980.00,
-    focused_3: 690.00,
-    pwp: 540.50,
-    clearance: 350.00,
-    transactions: 342,
-    gross_profit: 12450.00
-  },
-  rankings: {
-    outlet_rank: 3,
-    company_rank: 45,
-    percentile: 93
-  },
-  daily: [
-    { date: '2024-12-01', sales: 1850, house_brand: 210 },
-    { date: '2024-12-02', sales: 2100, house_brand: 245 },
-    { date: '2024-12-03', sales: 1920, house_brand: 198 },
-    { date: '2024-12-04', sales: 2350, house_brand: 312 },
-    { date: '2024-12-05', sales: 1780, house_brand: 189 },
-    { date: '2024-12-06', sales: 2450, house_brand: 287 },
-    { date: '2024-12-07', sales: 2680, house_brand: 345 },
-  ]
+interface TargetData {
+  target: number
+  current: number
+  progress: number | null
+}
+
+interface Targets {
+  total_sales: TargetData
+  house_brand: TargetData
+  focused_1: TargetData
+  focused_2: TargetData
+  focused_3: TargetData
+  clearance: TargetData
+  pwp: TargetData
+  transactions: TargetData
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
   const [data, setData] = useState<any>(null)
+  const [targets, setTargets] = useState<Targets | null>(null)
+  const [commission, setCommission] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [staffId, setStaffId] = useState('184') // Default staff ID
+
+  const staffId = user?.code || ''
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.push('/login')
+    }
+  }, [authLoading, isAuthenticated, router])
+
+  useEffect(() => {
+    if (isAuthenticated && staffId) {
+      loadData()
+    }
+  }, [isAuthenticated, staffId])
 
   const loadData = async () => {
+    if (!staffId) return
+
     setLoading(true)
     setError(null)
+
     try {
-      const result = await fetchMyDashboard(staffId)
-      if (result.success) {
-        setData(result.data)
+      // Fetch all data in parallel
+      const [dashboardResult, targetsResult, commissionResult] = await Promise.all([
+        fetchMyDashboard(staffId).catch(err => ({ success: false, error: err })),
+        fetchMyTargets(staffId).catch(err => ({ success: false, error: err })),
+        fetchMyCommission(staffId).catch(err => ({ success: false, error: err }))
+      ])
+
+      if (dashboardResult.success) {
+        setData(dashboardResult.data)
       } else {
-        throw new Error('API returned error')
+        setError('Failed to load dashboard data')
+      }
+
+      if (targetsResult.success) {
+        setTargets(targetsResult.data)
+      }
+
+      if (commissionResult.success) {
+        setCommission(commissionResult.data)
       }
     } catch (err) {
       console.error('Failed to load data:', err)
-      setError('Using demo data - API may be waking up')
-      setData(demoKPIData)
+      setError('Failed to load data. Please try again.')
     } finally {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    loadData()
-  }, [staffId])
 
   const formatRM = (value: number) => {
     return new Intl.NumberFormat('en-MY', {
@@ -82,6 +96,21 @@ export default function Dashboard() {
     return new Date(dateStr).toLocaleDateString('en-MY', { month: 'short', day: 'numeric' })
   }
 
+  // Show loading during auth check
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
+        <span className="ml-3 text-gray-600">Loading...</span>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -91,7 +120,19 @@ export default function Dashboard() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <p className="text-gray-600 mb-4">No data available</p>
+        <button
+          onClick={loadData}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
 
   const dailyData = data.daily?.map((d: any) => ({
     date: formatDate(d.date),
@@ -99,39 +140,54 @@ export default function Dashboard() {
     house_brand: d.house_brand
   })) || []
 
+  // Helper to get target display
+  const getTarget = (key: keyof Targets) => {
+    if (!targets || !targets[key]) return { target: undefined, achievement: undefined }
+    const t = targets[key]
+    return {
+      target: t.target > 0 ? formatRM(t.target) : undefined,
+      achievement: t.progress !== null ? Math.round(t.progress) : undefined
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Dashboard</h1>
           <p className="text-gray-500 mt-1">
-            {data.staff_name} | {data.outlet_name}
+            {user?.name} | {data.outlet_name}
           </p>
           {error && (
             <p className="text-yellow-600 text-sm mt-1">{error}</p>
           )}
         </div>
-        <div className="flex items-center space-x-4">
-          <select
-            value={staffId}
-            onChange={(e) => setStaffId(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
-          >
-            <option value="184">Staff 184</option>
-            <option value="212">Staff 212</option>
-            <option value="123">Staff 123</option>
-            <option value="151">Staff 151</option>
-          </select>
-          <button
-            onClick={loadData}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-            title="Refresh"
-          >
-            <RefreshCw className="w-5 h-5 text-gray-600" />
-          </button>
-        </div>
+        <button
+          onClick={loadData}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+          title="Refresh"
+        >
+          <RefreshCw className="w-5 h-5 text-gray-600" />
+        </button>
       </div>
+
+      {/* Commission Summary */}
+      {commission && (
+        <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium">Commission Earned (This Month)</p>
+              <p className="text-3xl font-bold mt-1">{formatRM(commission.summary?.commission_earned || 0)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-green-100 text-sm">Today</p>
+              <p className="text-xl font-semibold">+{formatRM(commission.today?.commission_earned || 0)}</p>
+            </div>
+            <DollarSign className="w-12 h-12 text-green-200 opacity-50" />
+          </div>
+        </div>
+      )}
 
       {/* Rankings */}
       {data.rankings && (
@@ -148,48 +204,64 @@ export default function Dashboard() {
         <KPICard
           title="Total Sales"
           value={formatRM(data.kpis.total_sales)}
+          target={getTarget('total_sales').target}
+          achievement={getTarget('total_sales').achievement}
           icon={<ShoppingCart className="w-6 h-6" />}
           color="blue"
         />
         <KPICard
           title="House Brand"
           value={formatRM(data.kpis.house_brand)}
+          target={getTarget('house_brand').target}
+          achievement={getTarget('house_brand').achievement}
           icon={<Award className="w-6 h-6" />}
           color="green"
         />
         <KPICard
           title="Focused Item 1"
           value={formatRM(data.kpis.focused_1)}
+          target={getTarget('focused_1').target}
+          achievement={getTarget('focused_1').achievement}
           icon={<Target className="w-6 h-6" />}
           color="purple"
         />
         <KPICard
           title="Focused Item 2"
           value={formatRM(data.kpis.focused_2 || 0)}
+          target={getTarget('focused_2').target}
+          achievement={getTarget('focused_2').achievement}
           icon={<Target className="w-6 h-6" />}
           color="orange"
         />
         <KPICard
           title="Focused Item 3"
           value={formatRM(data.kpis.focused_3 || 0)}
+          target={getTarget('focused_3').target}
+          achievement={getTarget('focused_3').achievement}
           icon={<Target className="w-6 h-6" />}
           color="pink"
         />
         <KPICard
           title="PWP"
           value={formatRM(data.kpis.pwp || 0)}
+          target={getTarget('pwp').target}
+          achievement={getTarget('pwp').achievement}
           icon={<Tag className="w-6 h-6" />}
           color="teal"
         />
         <KPICard
           title="Stock Clearance"
           value={formatRM(data.kpis.clearance || 0)}
+          target={getTarget('clearance').target}
+          achievement={getTarget('clearance').achievement}
           icon={<Percent className="w-6 h-6" />}
           color="red"
         />
         <KPICard
           title="Transactions"
           value={data.kpis.transactions?.toString() || '0'}
+          target={targets?.transactions?.target ? targets.transactions.target.toString() : undefined}
+          achievement={getTarget('transactions').achievement}
           icon={<Users className="w-6 h-6" />}
           color="indigo"
         />
