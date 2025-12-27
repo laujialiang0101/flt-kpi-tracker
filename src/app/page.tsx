@@ -19,7 +19,8 @@ interface Targets {
   total_sales: TargetData
   house_brand: TargetData
   focused_1: TargetData
-  focused_2_3: TargetData
+  focused_2: TargetData
+  focused_3: TargetData
   clearance: TargetData
   pwp: TargetData
   transactions: TargetData
@@ -225,12 +226,20 @@ export default function Dashboard() {
           color="purple"
         />
         <KPICard
-          title="Focused Items 2 & 3"
-          value={formatRM(data.kpis.focused_2_3 || 0)}
-          target={getTarget('focused_2_3').target}
-          achievement={getTarget('focused_2_3').achievement}
+          title="Focused Item 2"
+          value={formatRM(data.kpis.focused_2 || 0)}
+          target={getTarget('focused_2').target}
+          achievement={getTarget('focused_2').achievement}
           icon={<Target className="w-6 h-6" />}
           color="orange"
+        />
+        <KPICard
+          title="Focused Item 3"
+          value={formatRM(data.kpis.focused_3 || 0)}
+          target={getTarget('focused_3').target}
+          achievement={getTarget('focused_3').achievement}
+          icon={<Target className="w-6 h-6" />}
+          color="pink"
         />
         <KPICard
           title="PWP"
