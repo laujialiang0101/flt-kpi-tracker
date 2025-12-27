@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trophy, Medal, TrendingUp, ChevronUp, ChevronDown, RefreshCw, Calendar } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -66,10 +66,15 @@ export default function Leaderboard() {
 
     try {
       const outletId = scope === 'outlet' ? user?.outlet_id || undefined : undefined
-      const result = await fetchLeaderboard(scope, outletId, selectedMonth)
+      const result = await fetchLeaderboard(scope, outletId, selectedMonth, user?.code)
 
       if (result.success) {
-        setRankings(result.data.rankings)
+        // If user position is provided and not in top 20, append it to rankings
+        let allRankings = result.data.rankings
+        if (result.data.user_position) {
+          allRankings = [...result.data.rankings, result.data.user_position]
+        }
+        setRankings(allRankings)
       } else {
         setError('Failed to load leaderboard')
       }
@@ -284,54 +289,68 @@ export default function Leaderboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedRankings.map((staff, index) => (
-                    <tr
-                      key={staff.staff_id}
-                      className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        staff.staff_id === user?.code ? 'bg-primary-50' : ''
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          {getRankBadge(index + 1)}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <span className="font-medium text-gray-900">{staff.staff_name}</span>
-                          {staff.staff_id === user?.code && (
-                            <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{staff.staff_id}</span>
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{staff.outlet_id}</td>
-                      <td className="py-3 px-4 text-right font-medium text-gray-900">
-                        {formatRM(staff.total_sales)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-green-600">
-                        {formatRM(staff.house_brand)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-purple-600">
-                        {formatRM(staff.focused_1)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-orange-600">
-                        {formatRM(staff.focused_2)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-pink-600">
-                        {formatRM(staff.focused_3)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-teal-600">
-                        {formatRM(staff.pwp)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-red-600">
-                        {formatRM(staff.clearance)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-indigo-600">
-                        {staff.transactions.toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                  {sortedRankings.map((staff, index) => {
+                    // Check if this is user position after top 20 (rank gap > 1)
+                    const prevRank = index > 0 ? sortedRankings[index - 1].rank : 0
+                    const showSeparator = staff.rank - prevRank > 1
+
+                    return (
+                      <Fragment key={staff.staff_id}>
+                        {showSeparator && (
+                          <tr className="bg-gray-100">
+                            <td colSpan={11} className="py-2 text-center text-sm text-gray-500">
+                              ... Your Position ...
+                            </td>
+                          </tr>
+                        )}
+                        <tr
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${
+                            staff.staff_id === user?.code ? 'bg-primary-50' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              {getRankBadge(staff.rank)}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              <span className="font-medium text-gray-900">{staff.staff_name}</span>
+                              {staff.staff_id === user?.code && (
+                                <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500">{staff.staff_id}</span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">{staff.outlet_id}</td>
+                          <td className="py-3 px-4 text-right font-medium text-gray-900">
+                            {formatRM(staff.total_sales)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-green-600">
+                            {formatRM(staff.house_brand)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-purple-600">
+                            {formatRM(staff.focused_1)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-orange-600">
+                            {formatRM(staff.focused_2)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-pink-600">
+                            {formatRM(staff.focused_3)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-teal-600">
+                            {formatRM(staff.pwp)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-red-600">
+                            {formatRM(staff.clearance)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-indigo-600">
+                            {staff.transactions.toLocaleString()}
+                          </td>
+                        </tr>
+                      </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

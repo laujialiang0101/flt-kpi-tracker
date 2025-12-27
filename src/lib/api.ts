@@ -10,10 +10,11 @@ export async function fetchMyDashboard(staffId: string, startDate?: string, endD
   return res.json()
 }
 
-export async function fetchLeaderboard(scope: 'outlet' | 'company', outletId?: string, month?: string) {
+export async function fetchLeaderboard(scope: 'outlet' | 'company', outletId?: string, month?: string, staffId?: string) {
   const params = new URLSearchParams({ scope })
   if (outletId) params.append('outlet_id', outletId)
   if (month) params.append('month', month)
+  if (staffId) params.append('staff_id', staffId)
 
   const res = await fetch(`${API_URL}/api/v1/kpi/leaderboard?${params}`)
   if (!res.ok) throw new Error('Failed to fetch leaderboard')
