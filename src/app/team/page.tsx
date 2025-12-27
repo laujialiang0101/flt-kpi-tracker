@@ -73,7 +73,9 @@ export default function TeamPage() {
     try {
       const [year, month] = selectedMonth.split('-')
       const startDate = `${year}-${month}-01`
-      const endDate = new Date(parseInt(year), parseInt(month), 0).toISOString().split('T')[0]
+      // Get last day of month without timezone issues (don't use toISOString as it converts to UTC)
+      const lastDay = new Date(parseInt(year), parseInt(month), 0)
+      const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
 
       const result = await fetchTeamOverview(user.outlet_id, user.group_id || undefined, startDate, endDate)
 
