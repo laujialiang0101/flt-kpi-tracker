@@ -38,7 +38,6 @@ const METRICS: { key: MetricKey; label: string; color: string }[] = [
 export default function Leaderboard() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
-  const [scope, setScope] = useState<'outlet' | 'company'>('company')
   const [metric, setMetric] = useState<MetricKey>('total_sales')
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -58,15 +57,15 @@ export default function Leaderboard() {
     if (isAuthenticated) {
       loadLeaderboard()
     }
-  }, [isAuthenticated, scope, selectedMonth])
+  }, [isAuthenticated, selectedMonth])
 
   const loadLeaderboard = async () => {
     setLoading(true)
     setError(null)
 
     try {
-      const outletId = scope === 'outlet' ? user?.outlet_id || undefined : undefined
-      const result = await fetchLeaderboard(scope, outletId, selectedMonth, user?.code)
+      // Company-wide leaderboard only
+      const result = await fetchLeaderboard('company', undefined, selectedMonth, user?.code)
 
       if (result.success) {
         // If user position is provided and not in top 20, append it to rankings
@@ -171,30 +170,6 @@ export default function Leaderboard() {
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-          </div>
-
-          {/* Scope Toggle */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setScope('outlet')}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                scope === 'outlet'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Outlet
-            </button>
-            <button
-              onClick={() => setScope('company')}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                scope === 'company'
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Company
-            </button>
           </div>
 
           {/* Metric Selector */}
