@@ -195,8 +195,12 @@ export default function TeamPage() {
         </div>
       ) : (
         <>
-          {/* Summary Cards - All 8 KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Outlet KPI Cards - 6 KPIs for bonus calculation */}
+          <div className="mb-2">
+            <h2 className="text-lg font-semibold text-gray-900">Outlet KPIs</h2>
+            <p className="text-sm text-gray-500">Used for 50% of bonus calculation</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="card">
               <div className="flex items-center justify-between">
                 <div>
@@ -209,6 +213,25 @@ export default function TeamPage() {
                   <ShoppingCart className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Gross Profit</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {formatRM(teamData.summary.gross_profit)}
+                  </p>
+                </div>
+                <div className="p-3 bg-emerald-100 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-emerald-600" />
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                {teamData.summary.total_sales > 0
+                  ? Math.round((teamData.summary.gross_profit / teamData.summary.total_sales) * 100)
+                  : 0}% margin
+              </p>
             </div>
 
             <div className="card">
@@ -247,34 +270,6 @@ export default function TeamPage() {
             <div className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Focused Item 2</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {formatRM(teamData.summary.focused_2)}
-                  </p>
-                </div>
-                <div className="p-3 bg-orange-100 rounded-lg">
-                  <Target className="w-6 h-6 text-orange-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">Focused Item 3</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">
-                    {formatRM(teamData.summary.focused_3)}
-                  </p>
-                </div>
-                <div className="p-3 bg-pink-100 rounded-lg">
-                  <Target className="w-6 h-6 text-pink-600" />
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-sm text-gray-500">PWP</p>
                   <p className="text-2xl font-bold text-gray-900 mt-1">
                     {formatRM(teamData.summary.pwp)}
@@ -296,6 +291,41 @@ export default function TeamPage() {
                 </div>
                 <div className="p-3 bg-red-100 rounded-lg">
                   <Percent className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Other KPIs - Individual tracking */}
+          <div className="mb-2 mt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Other KPIs</h2>
+            <p className="text-sm text-gray-500">Additional metrics tracked</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Focused Item 2</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {formatRM(teamData.summary.focused_2)}
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <Target className="w-6 h-6 text-orange-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Focused Item 3</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-1">
+                    {formatRM(teamData.summary.focused_3)}
+                  </p>
+                </div>
+                <div className="p-3 bg-pink-100 rounded-lg">
+                  <Target className="w-6 h-6 text-pink-600" />
                 </div>
               </div>
             </div>
