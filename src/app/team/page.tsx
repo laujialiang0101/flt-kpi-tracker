@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar } from 'lucide-react'
+import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchTeamOverview } from '@/lib/api'
 
@@ -36,6 +36,7 @@ interface TeamSummary {
 interface TeamData {
   outlet_id: string
   outlet_name: string
+  view_all?: boolean
   period: { start: string; end: string }
   summary: TeamSummary
   staff: StaffMember[]
@@ -51,6 +52,12 @@ export default function TeamPage() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
+  // Outlet selector for Admin/OOM/Area Manager (default = ALL)
+  const [selectedOutlet, setSelectedOutlet] = useState<string>('ALL')
+
+  // Check if user has multiple outlets (Admin/OOM/Area Manager)
+  const hasMultipleOutlets = user?.allowed_outlets && user.allowed_outlets.length > 1
+  const canSelectOutlet = ['admin', 'operations_manager', 'area_manager'].includes(user?.role || '')
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -59,13 +66,15 @@ export default function TeamPage() {
   }, [authLoading, isAuthenticated, router])
 
   useEffect(() => {
-    if (isAuthenticated && user?.outlet_id) {
+    if (isAuthenticated && user) {
+      // For roles with single outlet, use their outlet_id
+      // For roles with multiple outlets, use selected outlet (default ALL)
       loadTeamData()
     }
-  }, [isAuthenticated, user?.outlet_id, selectedMonth])
+  }, [isAuthenticated, user?.code, selectedMonth, selectedOutlet])
 
   const loadTeamData = async () => {
-    if (!user?.outlet_id) return
+    if (!user) return
 
     setLoading(true)
     setError(null)
@@ -77,7 +86,31 @@ export default function TeamPage() {
       const lastDay = new Date(parseInt(year), parseInt(month), 0)
       const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
 
-      const result = await fetchTeamOverview(user.outlet_id, user.group_id || undefined, startDate, endDate)
+      // Determine which outlet to query
+      let outletId: string | null = null
+      let outletIds: string[] | undefined = undefined
+
+      if (canSelectOutlet) {
+        // Admin/OOM/Area Manager: use selected outlet or ALL
+        if (selectedOutlet === 'ALL') {
+          outletId = null // null means ALL outlets
+          // Pass allowed outlet IDs for filtering
+          outletIds = user.allowed_outlets?.map(o => o.id)
+        } else {
+          outletId = selectedOutlet
+        }
+      } else {
+        // PIC/Cashier: use their assigned outlet
+        outletId = user.outlet_id
+      }
+
+      const result = await fetchTeamOverview(
+        outletId,
+        user.group_id || undefined,
+        startDate,
+        endDate,
+        outletIds
+      )
 
       if (result.success) {
         setTeamData(result.data)
@@ -132,12 +165,22 @@ export default function TeamPage() {
     return null
   }
 
-  if (!user?.outlet_id) {
+  // For PIC/Cashier, require outlet_id. For Admin/OOM/Area Manager, allowed_outlets is enough
+  if (!canSelectOutlet && !user?.outlet_id) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">No outlet assigned to your account</p>
       </div>
     )
+  }
+
+  // Get display name for selected outlet
+  const getOutletDisplayName = () => {
+    if (selectedOutlet === 'ALL') {
+      return `All Outlets (${user?.allowed_outlets?.length || 0})`
+    }
+    const outlet = user?.allowed_outlets?.find(o => o.id === selectedOutlet)
+    return outlet?.name || selectedOutlet
   }
 
   return (
@@ -147,11 +190,30 @@ export default function TeamPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Team Overview</h1>
           <p className="text-gray-500 mt-1">
-            {teamData?.outlet_name || user.outlet_id} | {formatMonthDisplay(selectedMonth)}
+            {canSelectOutlet ? getOutletDisplayName() : (teamData?.outlet_name || user?.outlet_id)} | {formatMonthDisplay(selectedMonth)}
           </p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
+          {/* Outlet Selector - Only for Admin/OOM/Area Manager */}
+          {canSelectOutlet && hasMultipleOutlets && (
+            <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+              <MapPin className="w-4 h-4 text-gray-500" />
+              <select
+                value={selectedOutlet}
+                onChange={(e) => setSelectedOutlet(e.target.value)}
+                className="text-sm focus:outline-none bg-transparent max-w-[200px]"
+              >
+                <option value="ALL">All Outlets ({user?.allowed_outlets?.length})</option>
+                {user?.allowed_outlets?.map((outlet) => (
+                  <option key={outlet.id} value={outlet.id}>
+                    {outlet.name || outlet.id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Month Picker */}
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
             <Calendar className="w-4 h-4 text-gray-500" />
@@ -351,75 +413,89 @@ export default function TeamPage() {
           {/* Staff Performance Table */}
           <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Staff Performance</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px]">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamData.staff.map((staff, index) => (
-                    <tr
-                      key={staff.staff_id}
-                      className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        staff.staff_id === user?.code ? 'bg-primary-50' : ''
-                      }`}
-                    >
-                      <td className="py-3 px-4">
-                        <span className={`w-8 h-8 flex items-center justify-center rounded-full font-medium ${
-                          index < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <span className="font-medium text-gray-900">{staff.staff_name}</span>
-                          {staff.staff_id === user?.code && (
-                            <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500">{staff.staff_id}</p>
-                      </td>
-                      <td className="py-3 px-4 text-right font-medium text-gray-900">
-                        {formatRM(staff.total_sales)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-green-600">
-                        {formatRM(staff.house_brand)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-purple-600">
-                        {formatRM(staff.focused_1)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-orange-600">
-                        {formatRM(staff.focused_2)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-pink-600">
-                        {formatRM(staff.focused_3)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-teal-600">
-                        {formatRM(staff.pwp)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-red-600">
-                        {formatRM(staff.clearance)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-indigo-600">
-                        {staff.transactions.toLocaleString()}
-                      </td>
+            {teamData.view_all || teamData.staff.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                {teamData.view_all ? (
+                  <>
+                    <MapPin className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>Select a specific outlet to view staff performance</p>
+                    <p className="text-sm mt-1">When viewing all outlets, only aggregated KPI data is shown</p>
+                  </>
+                ) : (
+                  <p>No staff data available for this outlet</p>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1000px]">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {teamData.staff.map((staff, index) => (
+                      <tr
+                        key={staff.staff_id}
+                        className={`border-b border-gray-100 hover:bg-gray-50 ${
+                          staff.staff_id === user?.code ? 'bg-primary-50' : ''
+                        }`}
+                      >
+                        <td className="py-3 px-4">
+                          <span className={`w-8 h-8 flex items-center justify-center rounded-full font-medium ${
+                            index < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {index + 1}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center">
+                            <span className="font-medium text-gray-900">{staff.staff_name}</span>
+                            {staff.staff_id === user?.code && (
+                              <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500">{staff.staff_id}</p>
+                        </td>
+                        <td className="py-3 px-4 text-right font-medium text-gray-900">
+                          {formatRM(staff.total_sales)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-green-600">
+                          {formatRM(staff.house_brand)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-purple-600">
+                          {formatRM(staff.focused_1)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-orange-600">
+                          {formatRM(staff.focused_2)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-pink-600">
+                          {formatRM(staff.focused_3)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-teal-600">
+                          {formatRM(staff.pwp)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-red-600">
+                          {formatRM(staff.clearance)}
+                        </td>
+                        <td className="py-3 px-4 text-right text-indigo-600">
+                          {staff.transactions.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}

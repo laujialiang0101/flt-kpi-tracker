@@ -21,11 +21,25 @@ export async function fetchLeaderboard(scope: 'outlet' | 'company', outletId?: s
   return res.json()
 }
 
-export async function fetchTeamOverview(outletId: string, groupId?: string, startDate?: string, endDate?: string) {
-  const params = new URLSearchParams({ outlet_id: outletId })
+export async function fetchTeamOverview(
+  outletId?: string | null,
+  groupId?: string,
+  startDate?: string,
+  endDate?: string,
+  outletIds?: string[]  // For Admin/OOM filtering by allowed outlets
+) {
+  const params = new URLSearchParams()
+
+  // If outletId is null/undefined or "ALL", we're viewing all outlets
+  if (outletId && outletId !== 'ALL') {
+    params.append('outlet_id', outletId)
+  }
   if (groupId) params.append('group_id', groupId)
   if (startDate) params.append('start_date', startDate)
   if (endDate) params.append('end_date', endDate)
+  if (outletIds && outletIds.length > 0) {
+    params.append('outlet_ids', outletIds.join(','))
+  }
 
   const res = await fetch(`${API_URL}/api/v1/kpi/team?${params}`)
   if (!res.ok) throw new Error('Failed to fetch team data')

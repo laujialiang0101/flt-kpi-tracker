@@ -2,14 +2,20 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
+interface OutletInfo {
+  id: string
+  name: string
+}
+
 interface User {
   code: string
   name: string
   role: string
-  outlet_id: string | null  // Physical outlet where sales are made
+  outlet_id: string | null  // Physical outlet where sales are made (null = ALL for Admin/OOM)
   group_id: string | null   // Staff team/group for filtering
   is_supervisor: boolean
   user_group: string | null
+  allowed_outlets: OutletInfo[]  // Allowed outlets for Admin/OOM/Area Manager
   permissions: {
     can_view_own_kpi: boolean
     can_view_leaderboard: boolean
