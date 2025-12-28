@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2563eb"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="19.2" fill="url(#bg)"/>
+  <text x="64" y="53.76" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">FLT</text>
+  <text x="64" y="92.16" font-family="Arial, sans-serif" font-size="23.04" font-weight="600" fill="white" text-anchor="middle">KPI</text>
+</svg>
