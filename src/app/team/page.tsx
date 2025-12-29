@@ -165,8 +165,11 @@ export default function TeamPage() {
       // Deselect all in region
       setSelectedOutlets(prev => prev.filter(id => !regionIds.includes(id)))
     } else {
-      // Select all in region
-      setSelectedOutlets(prev => [...new Set([...prev, ...regionIds])])
+      // Select all in region - merge without duplicates
+      setSelectedOutlets(prev => {
+        const combined = [...prev, ...regionIds]
+        return combined.filter((id, index) => combined.indexOf(id) === index)
+      })
     }
   }
 
