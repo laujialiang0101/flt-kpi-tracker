@@ -1,10 +1,23 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin, Download, ChevronDown, Check, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchTeamOverview } from '@/lib/api'
+
+// Region definitions
+const REGIONS: Record<string, string> = {
+  'R1': 'R1 - AMIRUL',
+  'R2': 'R2 - HAZWANI',
+  'R3': 'R3 - HARIS',
+  'R4': 'R4 - RAIHAN',
+  'R5': 'R5 - ADNIN',
+  'R6': 'R6 - NADHIRAH',
+  'R7': 'R7 - HASANUL',
+  'R8': 'R8 - HAFSHAM',
+  'OTHER': 'Other Locations',
+}
 
 interface StaffMember {
   staff_id: string
@@ -108,6 +121,67 @@ export default function TeamPage() {
 
   // Check if viewing all outlets
   const isViewingAll = selectedOutlets.length === 0
+
+  // Group outlets by region
+  const outletsByRegion = useMemo(() => {
+    if (!user?.allowed_outlets) return {}
+
+    const grouped: Record<string, Array<{ id: string; name: string }>> = {}
+
+    user.allowed_outlets.forEach(outlet => {
+      // Extract region from outlet name (e.g., "R2 - AJIL - HAZWANI" -> "R2")
+      const match = outlet.name?.match(/^(R\d)/)
+      const region = match ? match[1] : 'OTHER'
+
+      if (!grouped[region]) grouped[region] = []
+      grouped[region].push(outlet)
+    })
+
+    // Sort outlets within each region by ID
+    Object.keys(grouped).forEach(region => {
+      grouped[region].sort((a, b) => a.id.localeCompare(b.id))
+    })
+
+    return grouped
+  }, [user?.allowed_outlets])
+
+  // Get sorted region keys (R1, R2, ... R8, then OTHER)
+  const sortedRegions = useMemo(() => {
+    const regions = Object.keys(outletsByRegion)
+    return regions.sort((a, b) => {
+      if (a === 'OTHER') return 1
+      if (b === 'OTHER') return -1
+      return a.localeCompare(b)
+    })
+  }, [outletsByRegion])
+
+  // Toggle all outlets in a region
+  const toggleRegion = (region: string) => {
+    const regionOutlets = outletsByRegion[region] || []
+    const regionIds = regionOutlets.map(o => o.id)
+    const allSelected = regionIds.every(id => selectedOutlets.includes(id))
+
+    if (allSelected) {
+      // Deselect all in region
+      setSelectedOutlets(prev => prev.filter(id => !regionIds.includes(id)))
+    } else {
+      // Select all in region
+      setSelectedOutlets(prev => [...new Set([...prev, ...regionIds])])
+    }
+  }
+
+  // Check if all outlets in a region are selected
+  const isRegionFullySelected = (region: string) => {
+    const regionOutlets = outletsByRegion[region] || []
+    return regionOutlets.length > 0 && regionOutlets.every(o => selectedOutlets.includes(o.id))
+  }
+
+  // Check if some outlets in a region are selected
+  const isRegionPartiallySelected = (region: string) => {
+    const regionOutlets = outletsByRegion[region] || []
+    const selectedCount = regionOutlets.filter(o => selectedOutlets.includes(o.id)).length
+    return selectedCount > 0 && selectedCount < regionOutlets.length
+  }
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -341,33 +415,64 @@ export default function TeamPage() {
                     )}
                   </div>
 
-                  {/* Outlet list */}
-                  <div className="overflow-y-auto max-h-60">
-                    {user?.allowed_outlets?.map((outlet) => (
-                      <label
-                        key={outlet.id}
-                        className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
-                      >
-                        <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
-                          selectedOutlets.includes(outlet.id)
-                            ? 'bg-blue-600 border-blue-600'
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedOutlets.includes(outlet.id) && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{outlet.id}</p>
-                          <p className="text-xs text-gray-500 truncate">{outlet.name}</p>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={selectedOutlets.includes(outlet.id)}
-                          onChange={() => toggleOutlet(outlet.id)}
-                          className="sr-only"
-                        />
-                      </label>
+                  {/* Outlet list grouped by region */}
+                  <div className="overflow-y-auto max-h-72">
+                    {sortedRegions.map((region) => (
+                      <div key={region}>
+                        {/* Region header */}
+                        <button
+                          onClick={() => toggleRegion(region)}
+                          className="w-full flex items-center gap-3 px-3 py-2 bg-gray-100 hover:bg-gray-200 sticky top-0"
+                        >
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
+                            isRegionFullySelected(region)
+                              ? 'bg-blue-600 border-blue-600'
+                              : isRegionPartiallySelected(region)
+                              ? 'bg-blue-200 border-blue-400'
+                              : 'border-gray-400'
+                          }`}>
+                            {isRegionFullySelected(region) && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                            {isRegionPartiallySelected(region) && (
+                              <div className="w-2 h-2 bg-blue-600 rounded-sm" />
+                            )}
+                          </div>
+                          <span className="text-sm font-semibold text-gray-700 flex-1 text-left">
+                            {REGIONS[region] || region}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {outletsByRegion[region]?.length || 0} outlets
+                          </span>
+                        </button>
+
+                        {/* Outlets in region */}
+                        {outletsByRegion[region]?.map((outlet) => (
+                          <label
+                            key={outlet.id}
+                            className="flex items-center gap-3 px-3 py-2 pl-8 hover:bg-gray-50 cursor-pointer"
+                          >
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${
+                              selectedOutlets.includes(outlet.id)
+                                ? 'bg-blue-600 border-blue-600'
+                                : 'border-gray-300'
+                            }`}>
+                              {selectedOutlets.includes(outlet.id) && (
+                                <Check className="w-3 h-3 text-white" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900">{outlet.id}</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={selectedOutlets.includes(outlet.id)}
+                              onChange={() => toggleOutlet(outlet.id)}
+                              className="sr-only"
+                            />
+                          </label>
+                        ))}
+                      </div>
                     ))}
                   </div>
 
