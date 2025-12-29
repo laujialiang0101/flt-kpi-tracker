@@ -8,7 +8,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://flt-kpi-api.onrender
 
 // VAPID public key - this should match the one on the server
 // For production, generate new keys using: npx web-push generate-vapid-keys
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U'
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_KEY || 'BNEaN-5grwfKBkK2JPQCCFnLIgW8CSUs0LU2dI5rGlJGzauTBinEfYnf0wOLKTmIqgBnfN1N9W7F1dq_7K-5hHc'
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
