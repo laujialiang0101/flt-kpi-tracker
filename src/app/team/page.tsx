@@ -343,14 +343,17 @@ export default function TeamPage() {
         } else if (selectedOutlets.length === 1) {
           // Single outlet selected
           outletId = selectedOutlets[0]
+          outletIds = [selectedOutlets[0]]
         } else {
           // Multiple outlets selected
           outletId = null
           outletIds = selectedOutlets
         }
       } else {
-        // PIC/Cashier: use their assigned outlet
+        // PIC/Cashier: use their assigned outlet only
         outletId = user.outlet_id
+        // For outlet performance tab, only show their assigned outlet
+        outletIds = user.outlet_id ? [user.outlet_id] : undefined
       }
 
       if (viewType === 'staff') {
