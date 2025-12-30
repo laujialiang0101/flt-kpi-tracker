@@ -26,12 +26,20 @@ interface User {
   }
 }
 
+interface LoginResult {
+  success: boolean
+  error?: string
+  needsPasswordSetup?: boolean
+  user?: { code: string; name: string }
+}
+
 interface AuthContextType {
   user: User | null
   token: string | null
   isLoading: boolean
   isAuthenticated: boolean
-  login: (code: string, password: string) => Promise<{ success: boolean; error?: string }>
+  login: (code: string, password: string) => Promise<LoginResult>
+  setPassword: (code: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   checkSession: () => Promise<void>
 }
@@ -79,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = async (code: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (code: string, password: string): Promise<LoginResult> => {
     try {
       const res = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
@@ -88,6 +96,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       const data = await res.json()
+
+      // Check if first-time login (needs password setup)
+      if (data.needs_password_setup) {
+        return {
+          success: false,
+          needsPasswordSetup: true,
+          user: data.user,
+          error: data.error
+        }
+      }
 
       if (data.success && data.user && data.token) {
         setUser(data.user)
@@ -100,6 +118,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Login error:', error)
+      return { success: false, error: 'Network error. Please try again.' }
+    }
+  }
+
+  const setPassword = async (code: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/set-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, new_password: newPassword })
+      })
+
+      const data = await res.json()
+      return { success: data.success, error: data.error }
+    } catch (error) {
+      console.error('Set password error:', error)
       return { success: false, error: 'Network error. Please try again.' }
     }
   }
@@ -127,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         login,
+        setPassword,
         logout,
         checkSession
       }}
