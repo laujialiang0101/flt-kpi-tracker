@@ -52,7 +52,13 @@ export default function Dashboard() {
   // Calculate date range based on selection
   const getDateRange = (): DateRange => {
     const today = new Date()
-    const formatDate = (d: Date) => d.toISOString().split('T')[0]
+    // Format date in local timezone (YYYY-MM-DD) - don't use toISOString() as it converts to UTC
+    const formatDate = (d: Date) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
 
     switch (dateRangeType) {
       case 'today':
