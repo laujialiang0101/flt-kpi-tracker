@@ -745,31 +745,33 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* View Type Tabs */}
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
-        <button
-          onClick={() => setViewType('staff')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
-            viewType === 'staff'
-              ? 'bg-white text-primary-700 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          Staff Performance
-        </button>
-        <button
-          onClick={() => setViewType('outlet')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
-            viewType === 'outlet'
-              ? 'bg-white text-primary-700 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <Building2 className="w-4 h-4" />
-          Outlet Performance
-        </button>
-      </div>
+      {/* View Type Tabs - Only show Outlet Performance tab for Admin/OOM/Area Manager */}
+      {canSelectOutlet && (
+        <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+          <button
+            onClick={() => setViewType('staff')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+              viewType === 'staff'
+                ? 'bg-white text-primary-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            Staff Performance
+          </button>
+          <button
+            onClick={() => setViewType('outlet')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+              viewType === 'outlet'
+                ? 'bg-white text-primary-700 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            Outlet Performance
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 text-red-700 p-4 rounded-lg">
@@ -790,23 +792,92 @@ export default function TeamPage() {
           </div>
         ) : (
           <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="card text-center">
-                <p className="text-3xl font-bold text-primary-600">{outletPerformance.summary.outlet_count}</p>
-                <p className="text-sm text-gray-500">Outlets</p>
+            {/* Outlet KPIs Summary - Same 6 KPIs as Staff Performance */}
+            <div className="mb-2">
+              <h2 className="text-lg font-semibold text-gray-900">Combined Outlet KPIs</h2>
+              <p className="text-sm text-gray-500">{outletPerformance.summary.outlet_count} outlets | {outletPerformance.summary.staff_count} staff</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Total Sales</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.total_sales)}</p>
+                  </div>
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <ShoppingCart className="w-6 h-6 text-blue-600" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  GP: {formatRM(outletPerformance.summary.gross_profit)} ({outletPerformance.summary.total_sales > 0
+                    ? Math.round((outletPerformance.summary.gross_profit / outletPerformance.summary.total_sales) * 100)
+                    : 0}%)
+                </p>
               </div>
-              <div className="card text-center">
-                <p className="text-3xl font-bold text-blue-600">{formatRM(outletPerformance.summary.total_sales)}</p>
-                <p className="text-sm text-gray-500">Total Sales</p>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">House Brand</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.house_brand)}</p>
+                  </div>
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <Award className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500 mt-2">
+                  {outletPerformance.summary.total_sales > 0
+                    ? Math.round((outletPerformance.summary.house_brand / outletPerformance.summary.total_sales) * 100)
+                    : 0}% of total
+                </p>
               </div>
-              <div className="card text-center">
-                <p className="text-3xl font-bold text-green-600">{formatRM(outletPerformance.summary.gross_profit)}</p>
-                <p className="text-sm text-gray-500">Gross Profit</p>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Focused Item 1</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.focused_1)}</p>
+                  </div>
+                  <div className="p-3 bg-purple-100 rounded-lg">
+                    <Target className="w-6 h-6 text-purple-600" />
+                  </div>
+                </div>
               </div>
-              <div className="card text-center">
-                <p className="text-3xl font-bold text-purple-600">{outletPerformance.summary.transactions.toLocaleString()}</p>
-                <p className="text-sm text-gray-500">Transactions</p>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">PWP</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.pwp)}</p>
+                  </div>
+                  <div className="p-3 bg-teal-100 rounded-lg">
+                    <Tag className="w-6 h-6 text-teal-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Stock Clearance</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.clearance)}</p>
+                  </div>
+                  <div className="p-3 bg-red-100 rounded-lg">
+                    <Percent className="w-6 h-6 text-red-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Transactions</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{outletPerformance.summary.transactions.toLocaleString()}</p>
+                  </div>
+                  <div className="p-3 bg-indigo-100 rounded-lg">
+                    <Users className="w-6 h-6 text-indigo-600" />
+                  </div>
+                </div>
               </div>
             </div>
 
