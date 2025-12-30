@@ -126,3 +126,45 @@ export async function fetchStaffList(outletId?: string, limit = 100) {
   if (!res.ok) throw new Error('Failed to fetch staff list')
   return res.json()
 }
+
+// Outlet Target APIs
+export async function downloadOutletTargetTemplate() {
+  const res = await fetch(`${API_URL}/api/v1/outlet-targets/template`)
+  if (!res.ok) throw new Error('Failed to download outlet template')
+  return res.blob()
+}
+
+export async function uploadOutletTargets(file: File, token: string) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const res = await fetch(`${API_URL}/api/v1/outlet-targets/upload?token=${token}`, {
+    method: 'POST',
+    body: formData
+  })
+  if (!res.ok) throw new Error('Failed to upload outlet targets')
+  return res.json()
+}
+
+export async function fetchOutletTargets(outletId?: string, outletIds?: string[], month?: string) {
+  const params = new URLSearchParams()
+  if (outletId) params.append('outlet_id', outletId)
+  if (outletIds && outletIds.length > 0) params.append('outlet_ids', outletIds.join(','))
+  if (month) params.append('month', month)
+
+  const res = await fetch(`${API_URL}/api/v1/outlet-targets?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch outlet targets')
+  return res.json()
+}
+
+// Outlet Performance API
+export async function fetchOutletPerformance(outletIds?: string[], startDate?: string, endDate?: string) {
+  const params = new URLSearchParams()
+  if (outletIds && outletIds.length > 0) params.append('outlet_ids', outletIds.join(','))
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+
+  const res = await fetch(`${API_URL}/api/v1/kpi/outlets?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch outlet performance')
+  return res.json()
+}

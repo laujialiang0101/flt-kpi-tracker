@@ -2,13 +2,16 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Upload, Download, FileSpreadsheet, Check, X, AlertCircle, RefreshCw } from 'lucide-react'
+import { Upload, Download, FileSpreadsheet, Check, X, AlertCircle, RefreshCw, Users, Building2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { downloadTargetTemplate, uploadTargets } from '@/lib/api'
+import { downloadTargetTemplate, uploadTargets, downloadOutletTargetTemplate, uploadOutletTargets } from '@/lib/api'
+
+type TabType = 'individual' | 'outlet'
 
 export default function TargetsPage() {
   const router = useRouter()
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabType>('individual')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string; errors?: string[] } | null>(null)
@@ -27,14 +30,25 @@ export default function TargetsPage() {
     }
   }, [authLoading, isAuthenticated, user, router])
 
+  // Reset file and result when switching tabs
+  useEffect(() => {
+    setFile(null)
+    setResult(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }, [activeTab])
+
   const handleDownloadTemplate = async () => {
     setDownloading(true)
     try {
-      const blob = await downloadTargetTemplate()
+      const blob = activeTab === 'individual'
+        ? await downloadTargetTemplate()
+        : await downloadOutletTargetTemplate()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = 'target_template.xlsx'
+      a.download = activeTab === 'individual' ? 'target_template.xlsx' : 'outlet_target_template.xlsx'
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -71,11 +85,14 @@ export default function TargetsPage() {
     setResult(null)
 
     try {
-      const response = await uploadTargets(file, token)
+      const response = activeTab === 'individual'
+        ? await uploadTargets(file, token)
+        : await uploadOutletTargets(file, token)
+
       if (response.success) {
         setResult({
           success: true,
-          message: `Successfully uploaded ${response.rows_processed} targets`,
+          message: `Successfully uploaded ${response.rows_processed} ${activeTab === 'individual' ? 'staff' : 'outlet'} targets`,
           errors: response.errors
         })
         setFile(null)
@@ -121,17 +138,55 @@ export default function TargetsPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Target Management</h1>
         <p className="text-gray-500 mt-1">
-          Upload monthly targets for staff members
+          Upload monthly targets for staff members or outlets
         </p>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+        <button
+          onClick={() => setActiveTab('individual')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+            activeTab === 'individual'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Individual Targets
+        </button>
+        <button
+          onClick={() => setActiveTab('outlet')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+            activeTab === 'outlet'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          Outlet Targets
+        </button>
+      </div>
+
       {/* Instructions Card */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h2 className="font-semibold text-blue-900 mb-3">How to Upload Targets</h2>
-        <ol className="list-decimal list-inside space-y-2 text-blue-800 text-sm">
+      <div className={`border rounded-xl p-6 ${activeTab === 'individual' ? 'bg-blue-50 border-blue-200' : 'bg-purple-50 border-purple-200'}`}>
+        <h2 className={`font-semibold mb-3 ${activeTab === 'individual' ? 'text-blue-900' : 'text-purple-900'}`}>
+          How to Upload {activeTab === 'individual' ? 'Individual' : 'Outlet'} Targets
+        </h2>
+        <ol className={`list-decimal list-inside space-y-2 text-sm ${activeTab === 'individual' ? 'text-blue-800' : 'text-purple-800'}`}>
           <li>Download the Excel template using the button below</li>
-          <li>Fill in the staff IDs and target values for each KPI</li>
-          <li>Use format <code className="bg-blue-100 px-1 rounded">YYYYMM</code> for year_month (e.g., 202501 for January 2025)</li>
+          {activeTab === 'individual' ? (
+            <>
+              <li>Fill in the staff IDs and target values for each KPI</li>
+              <li>Use format <code className="bg-blue-100 px-1 rounded">YYYYMM</code> for year_month (e.g., 202501 for January 2025)</li>
+            </>
+          ) : (
+            <>
+              <li>The template is pre-filled with all active outlets</li>
+              <li>Fill in the target values for each outlet and KPI</li>
+              <li>Year_month is pre-filled with current month - modify if needed</li>
+            </>
+          )}
           <li>Upload the completed file</li>
         </ol>
 
@@ -139,21 +194,27 @@ export default function TargetsPage() {
           <button
             onClick={handleDownloadTemplate}
             disabled={downloading}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className={`inline-flex items-center px-4 py-2 text-white rounded-lg disabled:opacity-50 transition-colors ${
+              activeTab === 'individual'
+                ? 'bg-blue-600 hover:bg-blue-700'
+                : 'bg-purple-600 hover:bg-purple-700'
+            }`}
           >
             {downloading ? (
               <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Download className="w-4 h-4 mr-2" />
             )}
-            Download Template
+            Download {activeTab === 'individual' ? 'Staff' : 'Outlet'} Template
           </button>
         </div>
       </div>
 
       {/* Upload Section */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="font-semibold text-gray-900 mb-4">Upload Targets</h2>
+        <h2 className="font-semibold text-gray-900 mb-4">
+          Upload {activeTab === 'individual' ? 'Staff' : 'Outlet'} Targets
+        </h2>
 
         {/* Drop Zone */}
         <div
@@ -218,7 +279,7 @@ export default function TargetsPage() {
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Upload Targets
+                Upload {activeTab === 'individual' ? 'Staff' : 'Outlet'} Targets
               </>
             )}
           </button>
@@ -270,8 +331,18 @@ export default function TargetsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              <tr><td className="px-3 py-2 font-mono">staff_id</td><td className="px-3 py-2">Staff code</td><td className="px-3 py-2">184</td></tr>
-              <tr><td className="px-3 py-2 font-mono">year_month</td><td className="px-3 py-2">Target period (YYYYMM)</td><td className="px-3 py-2">202501</td></tr>
+              {activeTab === 'individual' ? (
+                <>
+                  <tr><td className="px-3 py-2 font-mono">staff_id</td><td className="px-3 py-2">Staff code</td><td className="px-3 py-2">184</td></tr>
+                  <tr><td className="px-3 py-2 font-mono">year_month</td><td className="px-3 py-2">Target period (YYYYMM)</td><td className="px-3 py-2">202501</td></tr>
+                </>
+              ) : (
+                <>
+                  <tr><td className="px-3 py-2 font-mono">outlet_id</td><td className="px-3 py-2">Outlet code</td><td className="px-3 py-2">HQ</td></tr>
+                  <tr><td className="px-3 py-2 font-mono">outlet_name</td><td className="px-3 py-2">Outlet name (for reference)</td><td className="px-3 py-2">HEAD QUARTERS</td></tr>
+                  <tr><td className="px-3 py-2 font-mono">year_month</td><td className="px-3 py-2">Target period (YYYYMM)</td><td className="px-3 py-2">202501</td></tr>
+                </>
+              )}
               <tr><td className="px-3 py-2 font-mono">total_sales</td><td className="px-3 py-2">Total sales target (RM)</td><td className="px-3 py-2">50000</td></tr>
               <tr><td className="px-3 py-2 font-mono">house_brand</td><td className="px-3 py-2">House Brand sales (RM)</td><td className="px-3 py-2">5000</td></tr>
               <tr><td className="px-3 py-2 font-mono">focused_1</td><td className="px-3 py-2">Focused Item 1 (RM)</td><td className="px-3 py-2">3000</td></tr>
@@ -283,6 +354,17 @@ export default function TargetsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Info about progress bars */}
+      <div className={`rounded-xl p-4 ${activeTab === 'individual' ? 'bg-blue-50' : 'bg-purple-50'}`}>
+        <p className={`text-sm ${activeTab === 'individual' ? 'text-blue-700' : 'text-purple-700'}`}>
+          {activeTab === 'individual' ? (
+            <>After uploading, staff members will see progress bars on their Dashboard showing their achievement against these targets.</>
+          ) : (
+            <>After uploading, the Team page will show progress bars for outlet-level targets. When viewing multiple outlets, targets are summed up automatically.</>
+          )}
+        </p>
       </div>
     </div>
   )

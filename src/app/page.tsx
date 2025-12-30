@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, ShoppingCart, Award, Target, RefreshCw, Tag, Percent, DollarSign } from 'lucide-react'
+import { Users, ShoppingCart, Award, Target, RefreshCw, Tag, Percent, DollarSign, Calendar } from 'lucide-react'
 import KPICard from '@/components/KPICard'
 import SalesChart from '@/components/SalesChart'
 import RankingBadge from '@/components/RankingBadge'
@@ -26,6 +26,14 @@ interface Targets {
   transactions: TargetData
 }
 
+type DateRangeType = 'today' | 'yesterday' | 'last7days' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'custom'
+
+interface DateRange {
+  start: string
+  end: string
+  label: string
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
@@ -34,8 +42,66 @@ export default function Dashboard() {
   const [commission, setCommission] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [dateRangeType, setDateRangeType] = useState<DateRangeType>('thisMonth')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  const [showDatePicker, setShowDatePicker] = useState(false)
 
   const staffId = user?.code || ''
+
+  // Calculate date range based on selection
+  const getDateRange = (): DateRange => {
+    const today = new Date()
+    const formatDate = (d: Date) => d.toISOString().split('T')[0]
+
+    switch (dateRangeType) {
+      case 'today':
+        return { start: formatDate(today), end: formatDate(today), label: 'Today' }
+
+      case 'yesterday': {
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        return { start: formatDate(yesterday), end: formatDate(yesterday), label: 'Yesterday' }
+      }
+
+      case 'last7days': {
+        const last7 = new Date(today)
+        last7.setDate(last7.getDate() - 6)
+        return { start: formatDate(last7), end: formatDate(today), label: 'Last 7 Days' }
+      }
+
+      case 'thisWeek': {
+        const startOfWeek = new Date(today)
+        const dayOfWeek = today.getDay()
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday as start
+        startOfWeek.setDate(today.getDate() - diff)
+        return { start: formatDate(startOfWeek), end: formatDate(today), label: 'This Week' }
+      }
+
+      case 'thisMonth': {
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+        return { start: formatDate(startOfMonth), end: formatDate(today), label: 'This Month' }
+      }
+
+      case 'lastMonth': {
+        const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+        return { start: formatDate(startOfLastMonth), end: formatDate(endOfLastMonth), label: 'Last Month' }
+      }
+
+      case 'custom':
+        return {
+          start: customStartDate || formatDate(new Date(today.getFullYear(), today.getMonth(), 1)),
+          end: customEndDate || formatDate(today),
+          label: 'Custom Range'
+        }
+
+      default:
+        return { start: formatDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: formatDate(today), label: 'This Month' }
+    }
+  }
+
+  const dateRange = getDateRange()
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -47,7 +113,7 @@ export default function Dashboard() {
     if (isAuthenticated && staffId) {
       loadData()
     }
-  }, [isAuthenticated, staffId])
+  }, [isAuthenticated, staffId, dateRangeType, customStartDate, customEndDate])
 
   const loadData = async () => {
     if (!staffId) return
@@ -55,12 +121,14 @@ export default function Dashboard() {
     setLoading(true)
     setError(null)
 
+    const range = getDateRange()
+
     try {
       // Fetch all data in parallel
       const [dashboardResult, targetsResult, commissionResult] = await Promise.all([
-        fetchMyDashboard(staffId).catch(err => ({ success: false, error: err })),
+        fetchMyDashboard(staffId, range.start, range.end).catch(err => ({ success: false, error: err })),
         fetchMyTargets(staffId).catch(err => ({ success: false, error: err })),
-        fetchMyCommission(staffId).catch(err => ({ success: false, error: err }))
+        fetchMyCommission(staffId, range.start, range.end).catch(err => ({ success: false, error: err }))
       ])
 
       if (dashboardResult.success) {
@@ -163,13 +231,94 @@ export default function Dashboard() {
             <p className="text-yellow-600 text-sm mt-1">{error}</p>
           )}
         </div>
-        <button
-          onClick={loadData}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-          title="Refresh"
-        >
-          <RefreshCw className="w-5 h-5 text-gray-600" />
-        </button>
+
+        <div className="flex gap-3 items-center flex-wrap">
+          {/* Date Range Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2"
+            >
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm">{dateRange.label}</span>
+            </button>
+
+            {showDatePicker && (
+              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+                <div className="space-y-1">
+                  {[
+                    { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
+                    { value: 'last7days', label: 'Last 7 Days' },
+                    { value: 'thisWeek', label: 'This Week' },
+                    { value: 'thisMonth', label: 'This Month' },
+                    { value: 'lastMonth', label: 'Last Month' },
+                    { value: 'custom', label: 'Custom Range' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setDateRangeType(option.value as DateRangeType)
+                        if (option.value !== 'custom') {
+                          setShowDatePicker(false)
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded text-sm ${
+                        dateRangeType === option.value
+                          ? 'bg-primary-100 text-primary-700 font-medium'
+                          : 'hover:bg-gray-100'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {dateRangeType === 'custom' && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Start Date</label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">End Date</label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="w-full mt-2 py-2 bg-primary-600 text-white text-sm rounded hover:bg-primary-700"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={loadData}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            title="Refresh"
+          >
+            <RefreshCw className="w-5 h-5 text-gray-600" />
+          </button>
+        </div>
+      </div>
+
+      {/* Period Display */}
+      <div className="text-sm text-gray-500">
+        Showing data from {new Date(dateRange.start).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(dateRange.end).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
       </div>
 
       {/* Commission Summary */}
@@ -177,7 +326,7 @@ export default function Dashboard() {
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm font-medium">Commission Earned (This Month)</p>
+              <p className="text-green-100 text-sm font-medium">Commission Earned ({dateRange.label})</p>
               <p className="text-3xl font-bold mt-1">{formatRM(commission.summary?.commission_earned || 0)}</p>
             </div>
             <div className="text-right">

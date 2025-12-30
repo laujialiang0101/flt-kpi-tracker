@@ -2,9 +2,18 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin, Download, ChevronDown, Check, X } from 'lucide-react'
+import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin, Download, ChevronDown, Check, X, Building2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { fetchTeamOverview } from '@/lib/api'
+import { fetchTeamOverview, fetchOutletTargets, fetchOutletPerformance } from '@/lib/api'
+
+type DateRangeType = 'today' | 'yesterday' | 'last7days' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'custom'
+type ViewType = 'staff' | 'outlet'
+
+interface DateRange {
+  start: string
+  end: string
+  label: string
+}
 
 // Region definitions
 const REGIONS: Record<string, string> = {
@@ -56,30 +65,142 @@ interface TeamData {
   staff: StaffMember[]
 }
 
+interface OutletTargetData {
+  target: number
+  current: number
+  progress: number | null
+}
+
+interface OutletTargets {
+  total_sales: OutletTargetData
+  house_brand: OutletTargetData
+  focused_1: OutletTargetData
+  focused_2: OutletTargetData
+  focused_3: OutletTargetData
+  pwp: OutletTargetData
+  clearance: OutletTargetData
+  transactions: OutletTargetData
+}
+
+interface OutletPerformanceItem {
+  outlet_id: string
+  outlet_name: string
+  staff_count: number
+  total_sales: number
+  gross_profit: number
+  house_brand: number
+  focused_1: number
+  focused_2: number
+  focused_3: number
+  pwp: number
+  clearance: number
+  transactions: number
+  rank: number
+}
+
+interface OutletPerformanceData {
+  period: { start: string; end: string }
+  summary: {
+    outlet_count: number
+    staff_count: number
+    total_sales: number
+    gross_profit: number
+    house_brand: number
+    focused_1: number
+    focused_2: number
+    focused_3: number
+    pwp: number
+    clearance: number
+    transactions: number
+  }
+  outlets: OutletPerformanceItem[]
+}
+
 export default function TeamPage() {
   const router = useRouter()
   const { user, isAuthenticated, isLoading: authLoading } = useAuth()
+  const [viewType, setViewType] = useState<ViewType>('staff')
   const [teamData, setTeamData] = useState<TeamData | null>(null)
+  const [outletPerformance, setOutletPerformance] = useState<OutletPerformanceData | null>(null)
+  const [outletTargets, setOutletTargets] = useState<OutletTargets | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  })
+  const [dateRangeType, setDateRangeType] = useState<DateRangeType>('thisMonth')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  const [showDatePicker, setShowDatePicker] = useState(false)
   // Multi-select outlets for Admin/OOM/Area Manager
   const [selectedOutlets, setSelectedOutlets] = useState<string[]>([])  // Empty = ALL
   const [outletDropdownOpen, setOutletDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const datePickerRef = useRef<HTMLDivElement>(null)
+
+  // Calculate date range based on selection
+  const getDateRange = (): DateRange => {
+    const today = new Date()
+    const formatDate = (d: Date) => d.toISOString().split('T')[0]
+
+    switch (dateRangeType) {
+      case 'today':
+        return { start: formatDate(today), end: formatDate(today), label: 'Today' }
+
+      case 'yesterday': {
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        return { start: formatDate(yesterday), end: formatDate(yesterday), label: 'Yesterday' }
+      }
+
+      case 'last7days': {
+        const last7 = new Date(today)
+        last7.setDate(last7.getDate() - 6)
+        return { start: formatDate(last7), end: formatDate(today), label: 'Last 7 Days' }
+      }
+
+      case 'thisWeek': {
+        const startOfWeek = new Date(today)
+        const dayOfWeek = today.getDay()
+        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday as start
+        startOfWeek.setDate(today.getDate() - diff)
+        return { start: formatDate(startOfWeek), end: formatDate(today), label: 'This Week' }
+      }
+
+      case 'thisMonth': {
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+        return { start: formatDate(startOfMonth), end: formatDate(today), label: 'This Month' }
+      }
+
+      case 'lastMonth': {
+        const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+        return { start: formatDate(startOfLastMonth), end: formatDate(endOfLastMonth), label: 'Last Month' }
+      }
+
+      case 'custom':
+        return {
+          start: customStartDate || formatDate(new Date(today.getFullYear(), today.getMonth(), 1)),
+          end: customEndDate || formatDate(today),
+          label: 'Custom Range'
+        }
+
+      default:
+        return { start: formatDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: formatDate(today), label: 'This Month' }
+    }
+  }
+
+  const dateRange = getDateRange()
 
   // Check if user has multiple outlets (Admin/OOM/Area Manager)
   const hasMultipleOutlets = user?.allowed_outlets && user.allowed_outlets.length > 1
   const canSelectOutlet = ['admin', 'operations_manager', 'area_manager'].includes(user?.role || '')
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOutletDropdownOpen(false)
+      }
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setShowDatePicker(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -196,22 +317,18 @@ export default function TeamPage() {
     if (isAuthenticated && user) {
       // For roles with single outlet, use their outlet_id
       // For roles with multiple outlets, use selected outlets (default ALL)
-      loadTeamData()
+      loadData()
     }
-  }, [isAuthenticated, user?.code, selectedMonth, selectedOutlets])
+  }, [isAuthenticated, user?.code, dateRangeType, customStartDate, customEndDate, selectedOutlets, viewType])
 
-  const loadTeamData = async () => {
+  const loadData = async () => {
     if (!user) return
 
     setLoading(true)
     setError(null)
 
     try {
-      const [year, month] = selectedMonth.split('-')
-      const startDate = `${year}-${month}-01`
-      // Get last day of month without timezone issues (don't use toISOString as it converts to UTC)
-      const lastDay = new Date(parseInt(year), parseInt(month), 0)
-      const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+      const range = getDateRange()
 
       // Determine which outlets to query
       let outletId: string | null = null
@@ -236,22 +353,51 @@ export default function TeamPage() {
         outletId = user.outlet_id
       }
 
-      const result = await fetchTeamOverview(
-        outletId,
-        user.group_id || undefined,
-        startDate,
-        endDate,
-        outletIds
-      )
+      if (viewType === 'staff') {
+        // Fetch team data and outlet targets in parallel
+        const [teamResult, targetsResult] = await Promise.all([
+          fetchTeamOverview(
+            outletId,
+            user.group_id || undefined,
+            range.start,
+            range.end,
+            outletIds
+          ),
+          fetchOutletTargets(
+            outletId || undefined,
+            outletIds,
+            range.start.substring(0, 7) // YYYY-MM format
+          ).catch(() => ({ success: false }))
+        ])
 
-      if (result.success) {
-        setTeamData(result.data)
+        if (teamResult.success) {
+          setTeamData(teamResult.data)
+        } else {
+          setError('Failed to load team data')
+        }
+
+        if (targetsResult.success) {
+          setOutletTargets(targetsResult.data)
+        } else {
+          setOutletTargets(null)
+        }
       } else {
-        setError('Failed to load team data')
+        // Fetch outlet performance data
+        const outletResult = await fetchOutletPerformance(
+          outletIds,
+          range.start,
+          range.end
+        )
+
+        if (outletResult.success) {
+          setOutletPerformance(outletResult.data)
+        } else {
+          setError('Failed to load outlet performance')
+        }
       }
     } catch (err) {
-      console.error('Failed to load team data:', err)
-      setError('Failed to load team data')
+      console.error('Failed to load data:', err)
+      setError('Failed to load data')
     } finally {
       setLoading(false)
     }
@@ -265,22 +411,14 @@ export default function TeamPage() {
     }).format(value)
   }
 
-  const getMonthOptions = () => {
-    const options = []
-    const now = new Date()
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const label = d.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
-      options.push({ value, label })
+  // Helper to get target progress for outlet KPIs
+  const getOutletProgress = (key: keyof OutletTargets) => {
+    if (!outletTargets || !outletTargets[key]) return null
+    const t = outletTargets[key]
+    return {
+      target: t.target,
+      progress: t.progress
     }
-    return options
-  }
-
-  const formatMonthDisplay = (month: string) => {
-    const [year, m] = month.split('-')
-    const date = new Date(parseInt(year), parseInt(m) - 1, 1)
-    return date.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
   }
 
   const [exporting, setExporting] = useState(false)
@@ -290,10 +428,7 @@ export default function TeamPage() {
 
     setExporting(true)
     try {
-      const [year, month] = selectedMonth.split('-')
-      const startDate = `${year}-${month}-01`
-      const lastDay = new Date(parseInt(year), parseInt(month), 0)
-      const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
+      const range = getDateRange()
 
       // Build export URL
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://flt-kpi-api.onrender.com'
@@ -302,31 +437,45 @@ export default function TeamPage() {
       if (canSelectOutlet) {
         if (selectedOutlets.length === 0) {
           // All outlets
-          params.set('outlet_id', 'ALL')
+          if (viewType === 'staff') {
+            params.set('outlet_id', 'ALL')
+          }
           if (user.allowed_outlets) {
             params.set('outlet_ids', user.allowed_outlets.map(o => o.id).join(','))
           }
         } else if (selectedOutlets.length === 1) {
           // Single outlet
-          params.set('outlet_id', selectedOutlets[0])
+          if (viewType === 'staff') {
+            params.set('outlet_id', selectedOutlets[0])
+          } else {
+            params.set('outlet_ids', selectedOutlets[0])
+          }
         } else {
           // Multiple outlets
-          params.set('outlet_id', 'ALL')
+          if (viewType === 'staff') {
+            params.set('outlet_id', 'ALL')
+          }
           params.set('outlet_ids', selectedOutlets.join(','))
         }
       } else if (user.outlet_id) {
-        params.set('outlet_id', user.outlet_id)
+        if (viewType === 'staff') {
+          params.set('outlet_id', user.outlet_id)
+        } else {
+          params.set('outlet_ids', user.outlet_id)
+        }
       }
 
-      params.set('start_date', startDate)
-      params.set('end_date', endDate)
+      params.set('start_date', range.start)
+      params.set('end_date', range.end)
 
-      // Trigger download
-      const url = `${apiUrl}/api/v1/kpi/team/export?${params.toString()}`
+      // Trigger download - different endpoint for staff vs outlet
+      const endpoint = viewType === 'staff' ? '/api/v1/kpi/team/export' : '/api/v1/kpi/outlets/export'
+      const url = `${apiUrl}${endpoint}?${params.toString()}`
       const label = selectedOutlets.length === 0 ? 'all' : selectedOutlets.length === 1 ? selectedOutlets[0] : `${selectedOutlets.length}_outlets`
+      const filePrefix = viewType === 'staff' ? 'staff_performance' : 'outlet_performance'
       const link = document.createElement('a')
       link.href = url
-      link.download = `staff_performance_${label}_${startDate}_${endDate}.xlsx`
+      link.download = `${filePrefix}_${label}_${range.start}_${range.end}.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -380,7 +529,10 @@ export default function TeamPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Team Overview</h1>
           <p className="text-gray-500 mt-1">
-            {canSelectOutlet ? getOutletDisplayName() : (teamData?.outlet_name || user?.outlet_id)} | {formatMonthDisplay(selectedMonth)}
+            {canSelectOutlet ? getOutletDisplayName() : (teamData?.outlet_name || user?.outlet_id)} | {dateRange.label}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {new Date(dateRange.start).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })} - {new Date(dateRange.end).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         </div>
 
@@ -493,18 +645,78 @@ export default function TeamPage() {
             </div>
           )}
 
-          {/* Month Picker */}
-          <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
-            <Calendar className="w-4 h-4 text-gray-500" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="text-sm focus:outline-none bg-transparent"
+          {/* Date Range Picker */}
+          <div className="relative" ref={datePickerRef}>
+            <button
+              onClick={() => setShowDatePicker(!showDatePicker)}
+              className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2"
             >
-              {getMonthOptions().map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
+              <Calendar className="w-4 h-4 text-gray-500" />
+              <span className="text-sm">{dateRange.label}</span>
+              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showDatePicker && (
+              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+                <div className="space-y-1">
+                  {[
+                    { value: 'today', label: 'Today' },
+                    { value: 'yesterday', label: 'Yesterday' },
+                    { value: 'last7days', label: 'Last 7 Days' },
+                    { value: 'thisWeek', label: 'This Week' },
+                    { value: 'thisMonth', label: 'This Month' },
+                    { value: 'lastMonth', label: 'Last Month' },
+                    { value: 'custom', label: 'Custom Range' },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => {
+                        setDateRangeType(option.value as DateRangeType)
+                        if (option.value !== 'custom') {
+                          setShowDatePicker(false)
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2 rounded text-sm ${
+                        dateRangeType === option.value
+                          ? 'bg-primary-100 text-primary-700 font-medium'
+                          : 'hover:bg-gray-100'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                {dateRangeType === 'custom' && (
+                  <div className="mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <div>
+                      <label className="text-xs text-gray-500">Start Date</label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500">End Date</label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full mt-1 px-2 py-1 border border-gray-200 rounded text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="w-full mt-2 py-2 bg-primary-600 text-white text-sm rounded hover:bg-primary-700"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Export */}
@@ -520,7 +732,7 @@ export default function TeamPage() {
 
           {/* Refresh */}
           <button
-            onClick={loadTeamData}
+            onClick={loadData}
             disabled={loading}
             className="p-2 hover:bg-gray-100 rounded-lg"
             title="Refresh"
@@ -528,6 +740,32 @@ export default function TeamPage() {
             <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
+      </div>
+
+      {/* View Type Tabs */}
+      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg w-fit">
+        <button
+          onClick={() => setViewType('staff')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+            viewType === 'staff'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Staff Performance
+        </button>
+        <button
+          onClick={() => setViewType('outlet')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all ${
+            viewType === 'outlet'
+              ? 'bg-white text-primary-700 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          Outlet Performance
+        </button>
       </div>
 
       {error && (
@@ -539,18 +777,131 @@ export default function TeamPage() {
       {loading ? (
         <div className="flex items-center justify-center min-h-[300px]">
           <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
-          <span className="ml-3 text-gray-600">Loading team data...</span>
+          <span className="ml-3 text-gray-600">Loading {viewType === 'staff' ? 'team' : 'outlet'} data...</span>
         </div>
+      ) : viewType === 'outlet' ? (
+        /* Outlet Performance View */
+        !outletPerformance ? (
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
+            <p className="text-gray-600">No outlet data available</p>
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="card text-center">
+                <p className="text-3xl font-bold text-primary-600">{outletPerformance.summary.outlet_count}</p>
+                <p className="text-sm text-gray-500">Outlets</p>
+              </div>
+              <div className="card text-center">
+                <p className="text-3xl font-bold text-blue-600">{formatRM(outletPerformance.summary.total_sales)}</p>
+                <p className="text-sm text-gray-500">Total Sales</p>
+              </div>
+              <div className="card text-center">
+                <p className="text-3xl font-bold text-green-600">{formatRM(outletPerformance.summary.gross_profit)}</p>
+                <p className="text-sm text-gray-500">Gross Profit</p>
+              </div>
+              <div className="card text-center">
+                <p className="text-3xl font-bold text-purple-600">{outletPerformance.summary.transactions.toLocaleString()}</p>
+                <p className="text-sm text-gray-500">Transactions</p>
+              </div>
+            </div>
+
+            {/* Outlet Performance Table */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Outlet Rankings</h2>
+                <span className="text-sm text-gray-500">{outletPerformance.outlets.length} outlets</span>
+              </div>
+              {outletPerformance.outlets.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Building2 className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No outlet data available</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[1100px]">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {outletPerformance.outlets.map((outlet, index) => (
+                        <tr
+                          key={outlet.outlet_id}
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${
+                            outlet.outlet_id === user?.outlet_id ? 'bg-primary-50' : ''
+                          }`}
+                        >
+                          <td className="py-3 px-4">
+                            <span className={`w-8 h-8 flex items-center justify-center rounded-full font-medium ${
+                              index < 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              <span className="font-medium text-gray-900">{outlet.outlet_name}</span>
+                              {outlet.outlet_id === user?.outlet_id && (
+                                <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">Your Outlet</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500">{outlet.outlet_id}</p>
+                          </td>
+                          <td className="py-3 px-4 text-right text-gray-600">
+                            {outlet.staff_count}
+                          </td>
+                          <td className="py-3 px-4 text-right font-medium text-gray-900">
+                            {formatRM(outlet.total_sales)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-emerald-600">
+                            {formatRM(outlet.gross_profit)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-green-600">
+                            {formatRM(outlet.house_brand)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-purple-600">
+                            {formatRM(outlet.focused_1)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-teal-600">
+                            {formatRM(outlet.pwp)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-red-600">
+                            {formatRM(outlet.clearance)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-indigo-600">
+                            {outlet.transactions.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </>
+        )
       ) : !teamData ? (
         <div className="text-center py-12 bg-gray-50 rounded-xl">
           <p className="text-gray-600">No data available</p>
         </div>
       ) : (
         <>
-          {/* Outlet KPI Cards - 6 KPIs for bonus calculation */}
+          {/* Staff Performance View - Outlet KPI Cards - 6 KPIs for bonus calculation */}
           <div className="mb-2">
             <h2 className="text-lg font-semibold text-gray-900">Outlet KPIs</h2>
-            <p className="text-sm text-gray-500">Used for 50% of bonus calculation</p>
+            <p className="text-sm text-gray-500">Used for 50% of bonus calculation {outletTargets && '(with targets)'}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="card">
@@ -565,6 +916,20 @@ export default function TeamPage() {
                   <ShoppingCart className="w-6 h-6 text-blue-600" />
                 </div>
               </div>
+              {getOutletProgress('total_sales') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('total_sales')!.target)}</span>
+                    <span>{getOutletProgress('total_sales')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('total_sales')!.progress! >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('total_sales')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -598,11 +963,26 @@ export default function TeamPage() {
                   <Award className="w-6 h-6 text-green-600" />
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {teamData.summary.total_sales > 0
-                  ? Math.round((teamData.summary.house_brand / teamData.summary.total_sales) * 100)
-                  : 0}% of total
-              </p>
+              {getOutletProgress('house_brand') ? (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('house_brand')!.target)}</span>
+                    <span>{getOutletProgress('house_brand')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('house_brand')!.progress! >= 100 ? 'bg-green-500' : 'bg-green-400'}`}
+                      style={{ width: `${Math.min(getOutletProgress('house_brand')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-2">
+                  {teamData.summary.total_sales > 0
+                    ? Math.round((teamData.summary.house_brand / teamData.summary.total_sales) * 100)
+                    : 0}% of total
+                </p>
+              )}
             </div>
 
             <div className="card">
@@ -617,6 +997,20 @@ export default function TeamPage() {
                   <Target className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
+              {getOutletProgress('focused_1') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('focused_1')!.target)}</span>
+                    <span>{getOutletProgress('focused_1')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('focused_1')!.progress! >= 100 ? 'bg-green-500' : 'bg-purple-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('focused_1')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -631,6 +1025,20 @@ export default function TeamPage() {
                   <Tag className="w-6 h-6 text-teal-600" />
                 </div>
               </div>
+              {getOutletProgress('pwp') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('pwp')!.target)}</span>
+                    <span>{getOutletProgress('pwp')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('pwp')!.progress! >= 100 ? 'bg-green-500' : 'bg-teal-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('pwp')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -645,6 +1053,20 @@ export default function TeamPage() {
                   <Percent className="w-6 h-6 text-red-600" />
                 </div>
               </div>
+              {getOutletProgress('clearance') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('clearance')!.target)}</span>
+                    <span>{getOutletProgress('clearance')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('clearance')!.progress! >= 100 ? 'bg-green-500' : 'bg-red-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('clearance')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
