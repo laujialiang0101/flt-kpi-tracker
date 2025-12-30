@@ -26,7 +26,7 @@ interface Targets {
   transactions: TargetData
 }
 
-type DateRangeType = 'today' | 'yesterday' | 'last7days' | 'thisWeek' | 'thisMonth' | 'lastMonth' | 'custom'
+type DateRangeType = 'today' | 'yesterday' | 'last7days' | 'thisMonth' | 'lastMonth' | 'custom'
 
 interface DateRange {
   start: string
@@ -74,14 +74,6 @@ export default function Dashboard() {
         const last7 = new Date(today)
         last7.setDate(last7.getDate() - 6)
         return { start: formatDate(last7), end: formatDate(today), label: 'Last 7 Days' }
-      }
-
-      case 'thisWeek': {
-        const startOfWeek = new Date(today)
-        const dayOfWeek = today.getDay()
-        const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Monday as start
-        startOfWeek.setDate(today.getDate() - diff)
-        return { start: formatDate(startOfWeek), end: formatDate(today), label: 'This Week' }
       }
 
       case 'thisMonth': {
@@ -256,7 +248,6 @@ export default function Dashboard() {
                     { value: 'today', label: 'Today' },
                     { value: 'yesterday', label: 'Yesterday' },
                     { value: 'last7days', label: 'Last 7 Days' },
-                    { value: 'thisWeek', label: 'This Week' },
                     { value: 'thisMonth', label: 'This Month' },
                     { value: 'lastMonth', label: 'Last Month' },
                     { value: 'custom', label: 'Custom Range' },
