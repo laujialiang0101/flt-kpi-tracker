@@ -56,7 +56,7 @@ export default function PushNotificationManager({ showPrompt = true }: PushNotif
 
   useEffect(() => {
     checkSubscription()
-  }, [isAuthenticated])
+  }, [isAuthenticated, user?.code])
 
   const checkSubscription = async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -66,6 +66,29 @@ export default function PushNotificationManager({ showPrompt = true }: PushNotif
     try {
       const registration = await navigator.serviceWorker.ready
       const subscription = await registration.pushManager.getSubscription()
+
+      if (subscription && user?.code) {
+        // Browser has subscription - ensure THIS user is registered on backend
+        // (subscription is shared across users on same device)
+        console.log('Found existing browser subscription, registering user:', user.code)
+        try {
+          const response = await fetch(`${API_URL}/api/v1/push/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              staff_id: user.code,
+              subscription: subscription.toJSON()
+            })
+          })
+          if (response.ok) {
+            console.log('User registered for push notifications:', user.code)
+            setIsSubscribed(true)
+          }
+        } catch (err) {
+          console.error('Failed to register user subscription:', err)
+        }
+      }
+
       setIsSubscribed(!!subscription)
     } catch (err) {
       console.error('Error checking subscription:', err)
