@@ -45,7 +45,14 @@ export default function PushNotificationManager({ showPrompt = true }: PushNotif
       const timer = setTimeout(() => setShowBanner(true), 3000)
       return () => clearTimeout(timer)
     }
-  }, [isAuthenticated, permission, showPrompt])
+
+    // Auto-subscribe if permission already granted (e.g., from another user on same device)
+    // but this user is not yet subscribed
+    if (isAuthenticated && permission === 'granted' && !isSubscribed && !isLoading && user?.code) {
+      console.log('Permission already granted, auto-subscribing user:', user.code)
+      subscribeToPush()
+    }
+  }, [isAuthenticated, permission, showPrompt, isSubscribed, isLoading, user?.code])
 
   useEffect(() => {
     checkSubscription()
