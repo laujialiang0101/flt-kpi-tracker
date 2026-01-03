@@ -73,6 +73,7 @@ interface OutletTargetData {
 
 interface OutletTargets {
   total_sales: OutletTargetData
+  gross_profit: OutletTargetData
   house_brand: OutletTargetData
   focused_1: OutletTargetData
   focused_2: OutletTargetData
@@ -844,11 +845,26 @@ export default function TeamPage() {
                     <TrendingUp className="w-6 h-6 text-emerald-600" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  {outletPerformance.summary.total_sales > 0
-                    ? Math.round((outletPerformance.summary.gross_profit / outletPerformance.summary.total_sales) * 100)
-                    : 0}% margin
-                </p>
+                {getOutletProgress('gross_profit') ? (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('gross_profit')!.target)}</span>
+                      <span>{getOutletProgress('gross_profit')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('gross_profit')!.progress! >= 100 ? 'bg-green-500' : 'bg-emerald-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('gross_profit')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {outletPerformance.summary.total_sales > 0
+                      ? Math.round((outletPerformance.summary.gross_profit / outletPerformance.summary.total_sales) * 100)
+                      : 0}% margin
+                  </p>
+                )}
               </div>
 
               <div className="card">
