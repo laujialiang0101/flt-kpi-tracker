@@ -344,6 +344,9 @@ export default function TargetsPage() {
                 </>
               )}
               <tr><td className="px-3 py-2 font-mono">total_sales</td><td className="px-3 py-2">Total sales target (RM)</td><td className="px-3 py-2">50000</td></tr>
+              {activeTab === 'outlet' && (
+                <tr><td className="px-3 py-2 font-mono">gross_profit</td><td className="px-3 py-2">Gross Profit target (RM)</td><td className="px-3 py-2">10000</td></tr>
+              )}
               <tr><td className="px-3 py-2 font-mono">house_brand</td><td className="px-3 py-2">House Brand sales (RM)</td><td className="px-3 py-2">5000</td></tr>
               <tr><td className="px-3 py-2 font-mono">focused_1</td><td className="px-3 py-2">Focused Item 1 (RM)</td><td className="px-3 py-2">3000</td></tr>
               <tr><td className="px-3 py-2 font-mono">focused_2</td><td className="px-3 py-2">Focused Item 2 (RM)</td><td className="px-3 py-2">2000</td></tr>
