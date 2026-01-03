@@ -658,7 +658,7 @@ export default function TeamPage() {
             </button>
 
             {showDatePicker && (
-              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3">
+              <div className="absolute top-full right-0 mt-1 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 sm:right-0 -right-4">
                 <div className="space-y-1">
                   {[
                     { value: 'today', label: 'Today' },
@@ -844,6 +844,30 @@ export default function TeamPage() {
               <div className="card">
                 <div className="flex items-center justify-between">
                   <div>
+                    <p className="text-sm text-gray-500">Focused Item 2</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.focused_2)}</p>
+                  </div>
+                  <div className="p-3 bg-orange-100 rounded-lg">
+                    <Target className="w-6 h-6 text-orange-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Focused Item 3</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.focused_3)}</p>
+                  </div>
+                  <div className="p-3 bg-pink-100 rounded-lg">
+                    <Target className="w-6 h-6 text-pink-600" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="card">
+                <div className="flex items-center justify-between">
+                  <div>
                     <p className="text-sm text-gray-500">PWP</p>
                     <p className="text-2xl font-bold text-gray-900 mt-1">{formatRM(outletPerformance.summary.pwp)}</p>
                   </div>
@@ -891,7 +915,7 @@ export default function TeamPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1100px]">
+                  <table className="w-full min-w-[1300px]">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
@@ -901,6 +925,8 @@ export default function TeamPage() {
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
@@ -944,6 +970,12 @@ export default function TeamPage() {
                           </td>
                           <td className="py-3 px-4 text-right text-purple-600">
                             {formatRM(outlet.focused_1)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-orange-600">
+                            {formatRM(outlet.focused_2)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-pink-600">
+                            {formatRM(outlet.focused_3)}
                           </td>
                           <td className="py-3 px-4 text-right text-teal-600">
                             {formatRM(outlet.pwp)}
