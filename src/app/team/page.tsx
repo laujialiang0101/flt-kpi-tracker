@@ -383,17 +383,30 @@ export default function TeamPage() {
           setOutletTargets(null)
         }
       } else {
-        // Fetch outlet performance data
-        const outletResult = await fetchOutletPerformance(
-          outletIds,
-          range.start,
-          range.end
-        )
+        // Fetch outlet performance data AND targets in parallel
+        const [outletResult, targetsResult] = await Promise.all([
+          fetchOutletPerformance(
+            outletIds,
+            range.start,
+            range.end
+          ),
+          fetchOutletTargets(
+            outletId || undefined,
+            outletIds,
+            range.start.substring(0, 7) // YYYY-MM format
+          ).catch(() => ({ success: false }))
+        ])
 
         if (outletResult.success) {
           setOutletPerformance(outletResult.data)
         } else {
           setError('Failed to load outlet performance')
+        }
+
+        if (targetsResult.success) {
+          setOutletTargets(targetsResult.data)
+        } else {
+          setOutletTargets(null)
         }
       }
     } catch (err) {
@@ -792,7 +805,7 @@ export default function TeamPage() {
             {/* Outlet KPIs - Same layout as Staff Performance */}
             <div className="mb-2">
               <h2 className="text-lg font-semibold text-gray-900">Outlet KPIs</h2>
-              <p className="text-sm text-gray-500">{outletPerformance.summary.outlet_count} outlets | {outletPerformance.summary.staff_count} staff</p>
+              <p className="text-sm text-gray-500">{outletPerformance.summary.outlet_count} outlets | {outletPerformance.summary.staff_count} staff {outletTargets && '(with targets)'}</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="card">
@@ -805,6 +818,20 @@ export default function TeamPage() {
                     <ShoppingCart className="w-6 h-6 text-blue-600" />
                   </div>
                 </div>
+                {getOutletProgress('total_sales') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('total_sales')!.target)}</span>
+                      <span>{getOutletProgress('total_sales')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('total_sales')!.progress! >= 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('total_sales')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -834,11 +861,26 @@ export default function TeamPage() {
                     <Award className="w-6 h-6 text-green-600" />
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  {outletPerformance.summary.total_sales > 0
-                    ? Math.round((outletPerformance.summary.house_brand / outletPerformance.summary.total_sales) * 100)
-                    : 0}% of total
-                </p>
+                {getOutletProgress('house_brand') ? (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('house_brand')!.target)}</span>
+                      <span>{getOutletProgress('house_brand')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('house_brand')!.progress! >= 100 ? 'bg-green-500' : 'bg-green-400'}`}
+                        style={{ width: `${Math.min(getOutletProgress('house_brand')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 mt-2">
+                    {outletPerformance.summary.total_sales > 0
+                      ? Math.round((outletPerformance.summary.house_brand / outletPerformance.summary.total_sales) * 100)
+                      : 0}% of total
+                  </p>
+                )}
               </div>
 
               <div className="card">
@@ -851,6 +893,20 @@ export default function TeamPage() {
                     <Target className="w-6 h-6 text-purple-600" />
                   </div>
                 </div>
+                {getOutletProgress('focused_1') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('focused_1')!.target)}</span>
+                      <span>{getOutletProgress('focused_1')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('focused_1')!.progress! >= 100 ? 'bg-green-500' : 'bg-purple-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('focused_1')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -863,6 +919,20 @@ export default function TeamPage() {
                     <Tag className="w-6 h-6 text-teal-600" />
                   </div>
                 </div>
+                {getOutletProgress('pwp') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('pwp')!.target)}</span>
+                      <span>{getOutletProgress('pwp')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('pwp')!.progress! >= 100 ? 'bg-green-500' : 'bg-teal-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('pwp')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -875,6 +945,20 @@ export default function TeamPage() {
                     <Percent className="w-6 h-6 text-red-600" />
                   </div>
                 </div>
+                {getOutletProgress('clearance') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('clearance')!.target)}</span>
+                      <span>{getOutletProgress('clearance')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('clearance')!.progress! >= 100 ? 'bg-green-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('clearance')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
