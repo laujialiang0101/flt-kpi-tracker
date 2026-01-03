@@ -658,7 +658,7 @@ export default function TeamPage() {
             </button>
 
             {showDatePicker && (
-              <div className="absolute top-full right-0 mt-1 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 sm:right-0 -right-4">
+              <div className="absolute top-full mt-1 w-64 max-w-[calc(100vw-2rem)] bg-white border border-gray-200 rounded-lg shadow-lg z-50 p-3 right-0 sm:right-0 left-auto">
                 <div className="space-y-1">
                   {[
                     { value: 'today', label: 'Today' },
