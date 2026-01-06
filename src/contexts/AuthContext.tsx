@@ -24,6 +24,9 @@ interface User {
     can_view_all_staff: boolean
     can_manage_roles: boolean
   }
+  region: string | null  // Region code (R1-R8) for retail staff
+  area_manager_id: string | null  // Staff ID of area manager
+  area_manager_name: string | null  // Clean name of area manager (without outlet prefix)
 }
 
 interface LoginResult {

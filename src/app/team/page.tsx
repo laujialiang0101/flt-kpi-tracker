@@ -15,17 +15,25 @@ interface DateRange {
   label: string
 }
 
-// Region definitions
-const REGIONS: Record<string, string> = {
-  'R1': 'R1 - AMIRUL',
-  'R2': 'R2 - HAZWANI',
-  'R3': 'R3 - HARIS',
-  'R4': 'R4 - RAIHAN',
-  'R5': 'R5 - ADNIN',
-  'R6': 'R6 - NADHIRAH',
-  'R7': 'R7 - HASANUL',
-  'R8': 'R8 - HAFSHAM',
-  'OTHER': 'Other Locations',
+// Region info interface for API response
+interface RegionInfo {
+  code: string
+  label: string
+  area_manager_id: string | null
+  area_manager_name: string | null
+}
+
+// API URL for fetching regions
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://flt-kpi-api.onrender.com'
+
+// Helper function to get region label from outlet name or API data
+const getRegionLabel = (regionCode: string, regionsData: RegionInfo[]): string => {
+  // First try to find from API data
+  const region = regionsData.find(r => r.code === regionCode)
+  if (region) return region.label
+  // Fallback for OTHER
+  if (regionCode === 'OTHER') return 'Other Locations'
+  return regionCode
 }
 
 interface StaffMember {
@@ -133,6 +141,7 @@ export default function TeamPage() {
   // Multi-select outlets for Admin/OOM/Area Manager
   const [selectedOutlets, setSelectedOutlets] = useState<string[]>([])  // Empty = ALL
   const [outletDropdownOpen, setOutletDropdownOpen] = useState(false)
+  const [regionsData, setRegionsData] = useState<RegionInfo[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const datePickerRef = useRef<HTMLDivElement>(null)
 
@@ -191,6 +200,23 @@ export default function TeamPage() {
   // Check if user has multiple outlets (Admin/OOM/Area Manager)
   const hasMultipleOutlets = user?.allowed_outlets && user.allowed_outlets.length > 1
   const canSelectOutlet = ['admin', 'operations_manager', 'area_manager'].includes(user?.role || '')
+
+
+  // Fetch regions data from API
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/v1/regions`)
+        const data = await res.json()
+        if (data.success && data.regions) {
+          setRegionsData(data.regions)
+        }
+      } catch (error) {
+        console.error('Failed to fetch regions:', error)
+      }
+    }
+    fetchRegions()
+  }, [])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -609,7 +635,7 @@ export default function TeamPage() {
                             )}
                           </div>
                           <span className="text-sm font-semibold text-gray-700 flex-1 text-left">
-                            {REGIONS[region] || region}
+                            {getRegionLabel(region, regionsData)}
                           </span>
                           <span className="text-xs text-gray-500">
                             {outletsByRegion[region]?.length || 0} outlets
