@@ -42,6 +42,7 @@ interface AuthContextType {
   setPassword: (code: string, newPassword: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   checkSession: () => Promise<void>
+  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -67,16 +68,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const res = await fetch(`${API_URL}/api/v1/auth/session?token=${savedToken}`)
+      // Use refresh-session to get latest role/permissions from database
+      // This ensures role changes are reflected without requiring logout
+      const res = await fetch(`${API_URL}/api/v1/auth/refresh-session?token=${savedToken}`, {
+        method: 'POST'
+      })
       const data = await res.json()
 
       if (data.success && data.user) {
         setUser(data.user)
         setToken(savedToken)
+        // Update local storage with refreshed data
+        localStorage.setItem('kpi_user', JSON.stringify(data.user))
       } else {
-        // Invalid session, clear storage
-        localStorage.removeItem('kpi_token')
-        localStorage.removeItem('kpi_user')
+        // Fallback to session check if refresh fails
+        const sessionRes = await fetch(`${API_URL}/api/v1/auth/session?token=${savedToken}`)
+        const sessionData = await sessionRes.json()
+
+        if (sessionData.success && sessionData.user) {
+          setUser(sessionData.user)
+          setToken(savedToken)
+        } else {
+          // Invalid session, clear storage
+          localStorage.removeItem('kpi_token')
+          localStorage.removeItem('kpi_user')
+        }
       }
     } catch (error) {
       console.error('Session check failed:', error)
@@ -84,6 +100,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('kpi_user')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const refreshSession = async () => {
+    if (!token) return
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/auth/refresh-session?token=${token}`, {
+        method: 'POST'
+      })
+      const data = await res.json()
+
+      if (data.success && data.user) {
+        setUser(data.user)
+        localStorage.setItem('kpi_user', JSON.stringify(data.user))
+        console.log('Session refreshed:', data.role_changed ? `Role changed from ${data.old_role} to ${data.new_role}` : 'No changes')
+      }
+    } catch (error) {
+      console.error('Session refresh failed:', error)
     }
   }
 
@@ -163,7 +198,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         setPassword,
         logout,
-        checkSession
+        checkSession,
+        refreshSession
       }}
     >
       {children}
