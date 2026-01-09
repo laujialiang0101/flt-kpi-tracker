@@ -1020,6 +1020,20 @@ export default function TeamPage() {
                     <Target className="w-6 h-6 text-orange-600" />
                   </div>
                 </div>
+                {getOutletProgress('focused_2') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('focused_2')!.target)}</span>
+                      <span>{getOutletProgress('focused_2')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('focused_2')!.progress! >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('focused_2')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -1032,6 +1046,20 @@ export default function TeamPage() {
                     <Target className="w-6 h-6 text-pink-600" />
                   </div>
                 </div>
+                {getOutletProgress('focused_3') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {formatRM(getOutletProgress('focused_3')!.target)}</span>
+                      <span>{getOutletProgress('focused_3')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('focused_3')!.progress! >= 100 ? 'bg-green-500' : 'bg-pink-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('focused_3')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="card">
@@ -1044,6 +1072,20 @@ export default function TeamPage() {
                     <Users className="w-6 h-6 text-indigo-600" />
                   </div>
                 </div>
+                {getOutletProgress('transactions') && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>Target: {getOutletProgress('transactions')!.target.toLocaleString()}</span>
+                      <span>{getOutletProgress('transactions')!.progress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${getOutletProgress('transactions')!.progress! >= 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
+                        style={{ width: `${Math.min(getOutletProgress('transactions')!.progress || 0, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1336,6 +1378,20 @@ export default function TeamPage() {
                   <Target className="w-6 h-6 text-orange-600" />
                 </div>
               </div>
+              {getOutletProgress('focused_2') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('focused_2')!.target)}</span>
+                    <span>{getOutletProgress('focused_2')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('focused_2')!.progress! >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('focused_2')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -1350,6 +1406,20 @@ export default function TeamPage() {
                   <Target className="w-6 h-6 text-pink-600" />
                 </div>
               </div>
+              {getOutletProgress('focused_3') && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {formatRM(getOutletProgress('focused_3')!.target)}</span>
+                    <span>{getOutletProgress('focused_3')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('focused_3')!.progress! >= 100 ? 'bg-green-500' : 'bg-pink-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('focused_3')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card">
@@ -1364,9 +1434,24 @@ export default function TeamPage() {
                   <Users className="w-6 h-6 text-indigo-600" />
                 </div>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
-                {teamData.summary.staff_count} staff members
-              </p>
+              {getOutletProgress('transactions') ? (
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>Target: {getOutletProgress('transactions')!.target.toLocaleString()}</span>
+                    <span>{getOutletProgress('transactions')!.progress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${getOutletProgress('transactions')!.progress! >= 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
+                      style={{ width: `${Math.min(getOutletProgress('transactions')!.progress || 0, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-2">
+                  {teamData.summary.staff_count} staff members
+                </p>
+              )}
             </div>
           </div>
 
