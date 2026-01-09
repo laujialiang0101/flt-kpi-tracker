@@ -1355,8 +1355,8 @@ export default function TeamPage() {
                       {formatRM(teamData.summary.bms_hs)}
                     </span>
                   </div>
-                  {/* Only show tier progress for single outlet selection */}
-                  {selectedOutlets.length === 1 && (() => {
+                  {/* Show tier progress for single outlet or staff users (who can only see their outlet) */}
+                  {(selectedOutlets.length === 1 || !canSelectOutlet) && (() => {
                     const outletBms = teamData.summary.bms_hs
                     const qualifiedTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
                     const nextTier = qualifiedTier
@@ -1392,7 +1392,7 @@ export default function TeamPage() {
                       </>
                     )
                   })()}
-                  {selectedOutlets.length > 1 && (
+                  {canSelectOutlet && selectedOutlets.length > 1 && (
                     <p className="text-xs text-gray-400 mt-1">Combined total from {selectedOutlets.length} outlets</p>
                   )}
                 </div>
