@@ -13,6 +13,7 @@ interface StaffRanking {
   outlet_id: string
   total_sales: number
   house_brand: number
+  bms_hs: number
   focused_1: number
   focused_2: number
   focused_3: number
@@ -22,11 +23,12 @@ interface StaffRanking {
   percentile: number | null
 }
 
-type MetricKey = 'total_sales' | 'house_brand' | 'focused_1' | 'focused_2' | 'focused_3' | 'pwp' | 'clearance' | 'transactions'
+type MetricKey = 'total_sales' | 'house_brand' | 'bms_hs' | 'focused_1' | 'focused_2' | 'focused_3' | 'pwp' | 'clearance' | 'transactions'
 
 const METRICS: { key: MetricKey; label: string; color: string }[] = [
   { key: 'total_sales', label: 'Total Sales', color: 'blue' },
   { key: 'house_brand', label: 'House Brand', color: 'green' },
+  { key: 'bms_hs', label: 'BMS HS', color: 'emerald' },
   { key: 'focused_1', label: 'Focused 1', color: 'purple' },
   { key: 'focused_2', label: 'Focused 2', color: 'orange' },
   { key: 'focused_3', label: 'Focused 3', color: 'pink' },
@@ -247,7 +249,7 @@ export default function Leaderboard() {
           <div className="card overflow-hidden">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Full Rankings</h2>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px]">
+              <table className="w-full min-w-[1000px]">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
@@ -255,6 +257,7 @@ export default function Leaderboard() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
@@ -273,7 +276,7 @@ export default function Leaderboard() {
                       <Fragment key={staff.staff_id}>
                         {showSeparator && (
                           <tr className="bg-gray-100">
-                            <td colSpan={11} className="py-2 text-center text-sm text-gray-500">
+                            <td colSpan={12} className="py-2 text-center text-sm text-gray-500">
                               ... Your Position ...
                             </td>
                           </tr>
@@ -303,6 +306,9 @@ export default function Leaderboard() {
                           </td>
                           <td className="py-3 px-4 text-right text-green-600">
                             {formatRM(staff.house_brand)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-emerald-600">
+                            {formatRM(staff.bms_hs || 0)}
                           </td>
                           <td className="py-3 px-4 text-right text-purple-600">
                             {formatRM(staff.focused_1)}

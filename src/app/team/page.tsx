@@ -129,6 +129,7 @@ interface OutletPerformanceItem {
   focused_3: number
   pwp: number
   clearance: number
+  bms_hs: number
   transactions: number
   rank: number
 }
@@ -1175,7 +1176,7 @@ export default function TeamPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1300px]">
+                  <table className="w-full min-w-[1400px]">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
@@ -1184,6 +1185,7 @@ export default function TeamPage() {
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
@@ -1227,6 +1229,9 @@ export default function TeamPage() {
                           </td>
                           <td className="py-3 px-4 text-right text-green-600">
                             {formatRM(outlet.house_brand)}
+                          </td>
+                          <td className="py-3 px-4 text-right text-emerald-600">
+                            {formatRM(outlet.bms_hs || 0)}
                           </td>
                           <td className="py-3 px-4 text-right text-purple-600">
                             {formatRM(outlet.focused_1)}
