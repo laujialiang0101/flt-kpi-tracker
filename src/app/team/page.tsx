@@ -49,6 +49,7 @@ interface StaffMember {
   clearance: number
   transactions: number
   rank: number | null
+  bms_hs?: number
 }
 
 interface TeamSummary {
@@ -62,6 +63,31 @@ interface TeamSummary {
   clearance: number
   transactions: number
   staff_count: number
+  bms_hs?: number
+}
+
+// BMS Tier Commission structure
+const BMS_TIERS = [
+  { outletMin: 60000, staffMin: 12000, incentive: 840 },
+  { outletMin: 60000, staffMin: 10000, incentive: 600 },
+  { outletMin: 50000, staffMin: 8500, incentive: 500 },
+  { outletMin: 40000, staffMin: 7000, incentive: 400 },
+  { outletMin: 30000, staffMin: 6000, incentive: 300 },
+  { outletMin: 25000, staffMin: 5000, incentive: 200 },
+  { outletMin: 20000, staffMin: 4000, incentive: 100 },
+  { outletMin: 15000, staffMin: 3500, incentive: 50 },
+]
+
+// Helper to get BMS tier info
+const getBmsTierInfo = (outletBms: number, staffBms: number) => {
+  for (const tier of BMS_TIERS) {
+    if (outletBms >= tier.outletMin && staffBms >= tier.staffMin) {
+      return { qualified: true, incentive: tier.incentive, tier }
+    }
+  }
+  // Find next achievable tier
+  const nextTier = [...BMS_TIERS].reverse().find(t => outletBms < t.outletMin || staffBms < t.staffMin)
+  return { qualified: false, incentive: 0, nextTier }
 }
 
 interface TeamData {
@@ -121,6 +147,7 @@ interface OutletPerformanceData {
     pwp: number
     clearance: number
     transactions: number
+    bms_hs?: number
   }
   outlets: OutletPerformanceItem[]
 }
@@ -923,6 +950,52 @@ export default function TeamPage() {
                       : 0}% of total
                   </p>
                 )}
+                {/* BMS (Biomerit & Allife HS) Sub-breakdown with Tier Status */}
+                {outletPerformance.summary.bms_hs !== undefined && outletPerformance.summary.bms_hs > 0 && (() => {
+                  const outletBms = outletPerformance.summary.bms_hs
+                  // Find the highest tier outlet qualifies for
+                  const qualifiedTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
+                  // Find next tier to achieve if not at top
+                  const nextTier = qualifiedTier
+                    ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedTier) - 1]
+                    : BMS_TIERS[BMS_TIERS.length - 1]
+                  const progressToNext = nextTier
+                    ? Math.min(100, Math.round((outletBms / nextTier.outletMin) * 100))
+                    : 100
+
+                  return (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">Biomerit & Allife HS</span>
+                        <span className="text-sm font-semibold text-emerald-600">
+                          {formatRM(outletBms)}
+                        </span>
+                      </div>
+                      {/* Outlet threshold progress */}
+                      <div className="mt-2">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>Outlet Min: {formatRM(nextTier?.outletMin || 60000)}</span>
+                          <span>{progressToNext}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full ${progressToNext >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                            style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      {qualifiedTier ? (
+                        <p className="text-xs text-emerald-600 mt-2">
+                          Outlet qualifies! Staff need ≥{formatRM(qualifiedTier.staffMin)} for RM{qualifiedTier.incentive} incentive
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-2">
+                          Need {formatRM((nextTier?.outletMin || 15000) - outletBms)} more to unlock tier commission
+                        </p>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
 
               <div className="card">
@@ -1273,6 +1346,52 @@ export default function TeamPage() {
                     : 0}% of total
                 </p>
               )}
+              {/* BMS (Biomerit & Allife HS) Sub-breakdown with Tier Status */}
+              {teamData.summary.bms_hs !== undefined && teamData.summary.bms_hs > 0 && (() => {
+                const outletBms = teamData.summary.bms_hs
+                // Find the highest tier outlet qualifies for
+                const qualifiedTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
+                // Find next tier to achieve if not at top
+                const nextTier = qualifiedTier
+                  ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedTier) - 1]
+                  : BMS_TIERS[BMS_TIERS.length - 1]
+                const progressToNext = nextTier
+                  ? Math.min(100, Math.round((outletBms / nextTier.outletMin) * 100))
+                  : 100
+
+                return (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500">Biomerit & Allife HS</span>
+                      <span className="text-sm font-semibold text-emerald-600">
+                        {formatRM(outletBms)}
+                      </span>
+                    </div>
+                    {/* Outlet threshold progress */}
+                    <div className="mt-2">
+                      <div className="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>Outlet Min: {formatRM(nextTier?.outletMin || 60000)}</span>
+                        <span>{progressToNext}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className={`h-1.5 rounded-full ${progressToNext >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                          style={{ width: `${Math.min(progressToNext, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    {qualifiedTier ? (
+                      <p className="text-xs text-emerald-600 mt-2">
+                        Outlet qualifies! Staff need ≥{formatRM(qualifiedTier.staffMin)} for RM{qualifiedTier.incentive} incentive
+                      </p>
+                    ) : (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Need {formatRM((nextTier?.outletMin || 15000) - outletBms)} more to unlock tier commission
+                      </p>
+                    )}
+                  </div>
+                )
+              })()}
             </div>
 
             <div className="card">
@@ -1468,7 +1587,7 @@ export default function TeamPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1100px]">
+                <table className="w-full min-w-[1200px]">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
@@ -1478,6 +1597,7 @@ export default function TeamPage() {
                       )}
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
@@ -1520,6 +1640,19 @@ export default function TeamPage() {
                         </td>
                         <td className="py-3 px-4 text-right text-green-600">
                           {formatRM(staff.house_brand)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {staff.bms_hs ? (
+                            <span className={`${
+                              teamData.summary.bms_hs && teamData.summary.bms_hs >= 15000
+                                ? (staff.bms_hs >= 3500 ? 'text-emerald-600 font-medium' : 'text-amber-600')
+                                : 'text-gray-500'
+                            }`}>
+                              {formatRM(staff.bms_hs)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-4 text-right text-purple-600">
                           {formatRM(staff.focused_1)}
