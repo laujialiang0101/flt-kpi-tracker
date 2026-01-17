@@ -334,14 +334,17 @@ export default function Dashboard() {
       {commission && (
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-6 text-white">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <p className="text-green-100 text-sm font-medium">Commission Earned ({dateRange.label})</p>
               <p className="text-3xl font-bold mt-1">{formatRM(commission.summary?.commission_earned || 0)}</p>
             </div>
-            <div className="text-right">
-              <p className="text-green-100 text-sm">Today</p>
-              <p className="text-xl font-semibold">+{formatRM(commission.today?.commission_earned || 0)}</p>
-            </div>
+            {/* Only show Today section if date range includes today */}
+            {commission.today && (
+              <div className="text-right mx-4">
+                <p className="text-green-100 text-sm">Today</p>
+                <p className="text-xl font-semibold">+{formatRM(commission.today.commission_earned || 0)}</p>
+              </div>
+            )}
             <DollarSign className="w-12 h-12 text-green-200 opacity-50" />
           </div>
         </div>
