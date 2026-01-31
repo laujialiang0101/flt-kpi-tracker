@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin, Download, ChevronDown, Check, X, Building2 } from 'lucide-react'
+import { Users, TrendingUp, Target, ShoppingCart, Award, Tag, Percent, RefreshCw, Calendar, MapPin, Download, ChevronDown, ChevronUp, Check, X, Building2, Search } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { fetchTeamOverview, fetchOutletTargets, fetchOutletPerformance } from '@/lib/api'
 
@@ -51,6 +51,7 @@ interface KPITargets {
 interface StaffMember {
   staff_id: string
   staff_name: string
+  is_pic?: boolean
   outlet_id?: string | null
   total_sales: number
   house_brand: number
@@ -166,6 +167,15 @@ export default function TeamPage() {
   const [regionsData, setRegionsData] = useState<RegionInfo[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
   const datePickerRef = useRef<HTMLDivElement>(null)
+
+  // Sort & filter state
+  type SortField = 'staff_name' | 'outlet_id' | 'total_sales' | 'house_brand' | 'bms_hs'
+    | 'focused_1' | 'focused_2' | 'focused_3' | 'pwp' | 'clearance' | 'transactions' | 'total_commission'
+  type SortDirection = 'asc' | 'desc'
+  const [sortField, setSortField] = useState<SortField>('total_sales')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [picOnly, setPicOnly] = useState(false)
 
   // Calculate date range based on selection
   const getDateRange = (): DateRange => {
@@ -494,6 +504,71 @@ export default function TeamPage() {
       </div>
     )
   }
+
+  // Sort handler
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection(['staff_name', 'outlet_id'].includes(field) ? 'asc' : 'desc')
+    }
+  }
+
+  // Sortable header component
+  const SortableHeader = ({ field, label, align = 'right' }: { field: SortField; label: string; align?: 'left' | 'right' }) => (
+    <th
+      className={`py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+      onClick={() => handleSort(field)}
+    >
+      <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+        <span>{label}</span>
+        {sortField === field ? (
+          sortDirection === 'asc'
+            ? <ChevronUp className="w-3 h-3 text-primary-600" />
+            : <ChevronDown className="w-3 h-3 text-primary-600" />
+        ) : (
+          <ChevronDown className="w-3 h-3 text-gray-300" />
+        )}
+      </div>
+    </th>
+  )
+
+  // Filtered and sorted staff list
+  const filteredAndSortedStaff = useMemo(() => {
+    if (!teamData?.staff) return []
+    let result = teamData.staff
+
+    // Text search filter (name or staff ID)
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      result = result.filter(s =>
+        s.staff_name.toLowerCase().includes(q) ||
+        s.staff_id.toLowerCase().includes(q) ||
+        (s.outlet_id && s.outlet_id.toLowerCase().includes(q))
+      )
+    }
+
+    // PIC-only filter
+    if (picOnly) {
+      result = result.filter(s => s.is_pic)
+    }
+
+    // Sort
+    return [...result].sort((a, b) => {
+      const aVal = a[sortField]
+      const bVal = b[sortField]
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+      if (sortField === 'staff_name' || sortField === 'outlet_id') {
+        const cmp = String(aVal).localeCompare(String(bVal))
+        return sortDirection === 'asc' ? cmp : -cmp
+      }
+      const cmp = (aVal as number) - (bVal as number)
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [teamData?.staff, sortField, sortDirection, searchQuery, picOnly])
 
   // Helper to get target progress for outlet KPIs
   const getOutletProgress = (key: keyof OutletTargets) => {
@@ -1534,9 +1609,33 @@ export default function TeamPage() {
           <div className="card overflow-hidden">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Staff Performance</h2>
-              <span className="text-sm text-gray-500">{teamData.staff?.length || 0} staff</span>
+              <span className="text-sm text-gray-500">
+                {filteredAndSortedStaff.length}{filteredAndSortedStaff.length !== teamData.staff.length ? ` / ${teamData.staff.length}` : ''} staff
+              </span>
             </div>
-            {teamData.staff.length === 0 ? (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative flex-1 max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search name, ID, or outlet..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={() => setPicOnly(!picOnly)}
+                className={`px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
+                  picOnly
+                    ? 'bg-amber-100 text-amber-700 border-amber-300'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                PIC Only
+              </button>
+            </div>
+            {filteredAndSortedStaff.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                 <p>No staff data available</p>
@@ -1546,25 +1645,25 @@ export default function TeamPage() {
                 <table className="w-full min-w-[1400px]">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 w-12">Rank</th>
+                      <SortableHeader field="staff_name" label="Staff" align="left" />
                       {(teamData.view_all || selectedOutlets.length !== 1) && (
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
+                        <SortableHeader field="outlet_id" label="Outlet" align="left" />
                       )}
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Comm.</th>
+                      <SortableHeader field="total_sales" label="Total Sales" />
+                      <SortableHeader field="house_brand" label="House Brand" />
+                      <SortableHeader field="bms_hs" label="BMS HS" />
+                      <SortableHeader field="focused_1" label="Focused 1" />
+                      <SortableHeader field="focused_2" label="Focused 2" />
+                      <SortableHeader field="focused_3" label="Focused 3" />
+                      <SortableHeader field="pwp" label="PWP" />
+                      <SortableHeader field="clearance" label="Clearance" />
+                      <SortableHeader field="transactions" label="Trans." />
+                      <SortableHeader field="total_commission" label="Total Comm." />
                     </tr>
                   </thead>
                   <tbody>
-                    {teamData.staff.map((staff, index) => (
+                    {filteredAndSortedStaff.map((staff, index) => (
                       <tr
                         key={`${staff.staff_id}-${staff.outlet_id || index}`}
                         className={`border-b border-gray-100 hover:bg-gray-50 ${
@@ -1579,10 +1678,13 @@ export default function TeamPage() {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center">
+                          <div className="flex items-center flex-wrap gap-1">
                             <span className="font-medium text-gray-900">{staff.staff_name}</span>
+                            {staff.is_pic && (
+                              <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded">PIC</span>
+                            )}
                             {staff.staff_id === user?.code && (
-                              <span className="ml-2 px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
+                              <span className="px-2 py-0.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full">You</span>
                             )}
                           </div>
                           <p className="text-xs text-gray-500">{staff.staff_id}</p>
