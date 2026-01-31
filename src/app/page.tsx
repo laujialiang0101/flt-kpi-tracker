@@ -330,22 +330,31 @@ export default function Dashboard() {
         Showing data from {new Date(dateRange.start).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(dateRange.end).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
       </div>
 
-      {/* Commission Summary */}
-      {commission && (
+      {/* Commission Summary (Base + BMS Tier Incentive) */}
+      {data && (
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
-              <p className="text-green-100 text-sm font-medium">Commission Earned ({dateRange.label})</p>
-              <p className="text-3xl font-bold mt-1">{formatRM(commission.summary?.commission_earned || 0)}</p>
+              <p className="text-green-100 text-sm font-medium">Total Commission ({dateRange.label})</p>
+              <p className="text-3xl font-bold mt-1">{formatRM(data.kpis.total_commission || data.kpis.commission || 0)}</p>
             </div>
-            {/* Only show Today section if date range includes today */}
-            {commission.today && (
+            {commission?.today && (
               <div className="text-right mx-4">
                 <p className="text-green-100 text-sm">Today</p>
                 <p className="text-xl font-semibold">+{formatRM(commission.today.commission_earned || 0)}</p>
               </div>
             )}
             <DollarSign className="w-12 h-12 text-green-200 opacity-50" />
+          </div>
+          <div className="flex gap-4 text-sm">
+            <div className="bg-white/15 rounded-lg px-3 py-2 flex-1">
+              <p className="text-green-100 text-xs">Product Sales Incentive</p>
+              <p className="font-semibold">{formatRM(data.kpis.commission || 0)}</p>
+            </div>
+            <div className="bg-white/15 rounded-lg px-3 py-2 flex-1">
+              <p className="text-green-100 text-xs">BMS Tier Incentive</p>
+              <p className="font-semibold">{formatRM(data.kpis.bms_incentive || 0)}</p>
+            </div>
           </div>
         </div>
       )}
@@ -428,10 +437,10 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* BMS Tier Commission Card */}
-      {data.kpis.bms_hs !== undefined && (
+      {/* BMS Tier Progress */}
+      {data && data.kpis.bms_hs !== undefined && (
         <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Biomerit & Allife Health Supplement</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">BMS Tier Progress</h2>
           {(() => {
             const staffBms = data.kpis.bms_hs || 0
             const outletBms = data.kpis.outlet_bms_hs || 0
