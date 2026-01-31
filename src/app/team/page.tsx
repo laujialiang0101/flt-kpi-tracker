@@ -36,6 +36,18 @@ const getRegionLabel = (regionCode: string, regionsData: RegionInfo[]): string =
   return regionCode
 }
 
+interface KPITargets {
+  total_sales: number
+  house_brand: number
+  focused_1: number
+  focused_2: number
+  focused_3: number
+  pwp: number
+  clearance: number
+  transactions: number
+  gross_profit?: number
+}
+
 interface StaffMember {
   staff_id: string
   staff_name: string
@@ -53,8 +65,7 @@ interface StaffMember {
   commission?: number
   bms_incentive?: number
   total_commission?: number
-  target_total_sales?: number
-  target_progress?: number | null
+  targets?: KPITargets | null
 }
 
 interface TeamSummary {
@@ -137,8 +148,7 @@ interface OutletPerformanceItem {
   bms_hs: number
   transactions: number
   rank: number
-  target_total_sales?: number
-  target_progress?: number | null
+  targets?: KPITargets | null
 }
 
 interface OutletPerformanceData {
@@ -485,6 +495,27 @@ export default function TeamPage() {
       currency: 'MYR',
       minimumFractionDigits: 0
     }).format(value)
+  }
+
+  // Helper to render a value cell with optional target progress bar
+  const renderValueWithTarget = (value: number, target: number | undefined, format: 'rm' | 'number' = 'rm') => {
+    const progress = target && target > 0 ? Math.round(value / target * 100) : null
+    return (
+      <div>
+        <div>{format === 'rm' ? formatRM(value) : value.toLocaleString()}</div>
+        {progress !== null && (
+          <div className="flex items-center gap-1 mt-1">
+            <div className="w-full bg-gray-200 rounded-full h-1.5">
+              <div className={`h-1.5 rounded-full ${progress >= 100 ? 'bg-green-500' : progress >= 80 ? 'bg-yellow-500' : 'bg-red-400'}`}
+                   style={{ width: `${Math.min(progress, 100)}%` }} />
+            </div>
+            <span className={`text-[10px] font-medium whitespace-nowrap ${progress >= 100 ? 'text-green-600' : progress >= 80 ? 'text-yellow-600' : 'text-red-500'}`}>
+              {progress}%
+            </span>
+          </div>
+        )}
+      </div>
+    )
   }
 
   // Helper to get target progress for outlet KPIs
@@ -1189,14 +1220,13 @@ export default function TeamPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1500px]">
+                  <table className="w-full min-w-[1400px]">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Target %</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
@@ -1236,49 +1266,34 @@ export default function TeamPage() {
                             {outlet.staff_count}
                           </td>
                           <td className="py-3 px-4 text-right font-medium text-gray-900">
-                            {formatRM(outlet.total_sales)}
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            {outlet.target_progress !== null && outlet.target_progress !== undefined ? (
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 bg-gray-200 rounded-full h-2">
-                                  <div className={`h-2 rounded-full ${outlet.target_progress >= 100 ? 'bg-green-500' : outlet.target_progress >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                       style={{ width: `${Math.min(outlet.target_progress, 100)}%` }} />
-                                </div>
-                                <span className={`text-xs font-medium ${outlet.target_progress >= 100 ? 'text-green-600' : outlet.target_progress >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                  {Math.round(outlet.target_progress)}%
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-gray-300 text-xs">No target</span>
-                            )}
+                            {renderValueWithTarget(outlet.total_sales, outlet.targets?.total_sales)}
                           </td>
                           <td className="py-3 px-4 text-right text-emerald-600">
-                            {formatRM(outlet.gross_profit)}
+                            {renderValueWithTarget(outlet.gross_profit, outlet.targets?.gross_profit)}
                           </td>
                           <td className="py-3 px-4 text-right text-green-600">
-                            {formatRM(outlet.house_brand)}
+                            {renderValueWithTarget(outlet.house_brand, outlet.targets?.house_brand)}
                           </td>
                           <td className="py-3 px-4 text-right text-emerald-600">
                             {formatRM(outlet.bms_hs || 0)}
                           </td>
                           <td className="py-3 px-4 text-right text-purple-600">
-                            {formatRM(outlet.focused_1)}
+                            {renderValueWithTarget(outlet.focused_1, outlet.targets?.focused_1)}
                           </td>
                           <td className="py-3 px-4 text-right text-orange-600">
-                            {formatRM(outlet.focused_2)}
+                            {renderValueWithTarget(outlet.focused_2, outlet.targets?.focused_2)}
                           </td>
                           <td className="py-3 px-4 text-right text-pink-600">
-                            {formatRM(outlet.focused_3)}
+                            {renderValueWithTarget(outlet.focused_3, outlet.targets?.focused_3)}
                           </td>
                           <td className="py-3 px-4 text-right text-teal-600">
-                            {formatRM(outlet.pwp)}
+                            {renderValueWithTarget(outlet.pwp, outlet.targets?.pwp)}
                           </td>
                           <td className="py-3 px-4 text-right text-red-600">
-                            {formatRM(outlet.clearance)}
+                            {renderValueWithTarget(outlet.clearance, outlet.targets?.clearance)}
                           </td>
                           <td className="py-3 px-4 text-right text-indigo-600">
-                            {outlet.transactions.toLocaleString()}
+                            {renderValueWithTarget(outlet.transactions, outlet.targets?.transactions, 'number')}
                           </td>
                         </tr>
                       ))}
@@ -1635,7 +1650,6 @@ export default function TeamPage() {
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
                       )}
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Target %</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
@@ -1677,25 +1691,10 @@ export default function TeamPage() {
                           </td>
                         )}
                         <td className="py-3 px-4 text-right font-medium text-gray-900">
-                          {formatRM(staff.total_sales)}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {staff.target_progress !== null && staff.target_progress !== undefined ? (
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 bg-gray-200 rounded-full h-2">
-                                <div className={`h-2 rounded-full ${staff.target_progress >= 100 ? 'bg-green-500' : staff.target_progress >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                                     style={{ width: `${Math.min(staff.target_progress, 100)}%` }} />
-                              </div>
-                              <span className={`text-xs font-medium ${staff.target_progress >= 100 ? 'text-green-600' : staff.target_progress >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
-                                {Math.round(staff.target_progress)}%
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="text-gray-300 text-xs">No target</span>
-                          )}
+                          {renderValueWithTarget(staff.total_sales, staff.targets?.total_sales)}
                         </td>
                         <td className="py-3 px-4 text-right text-green-600">
-                          {formatRM(staff.house_brand)}
+                          {renderValueWithTarget(staff.house_brand, staff.targets?.house_brand)}
                         </td>
                         <td className="py-3 px-4 text-right">
                           {staff.bms_hs ? (
@@ -1711,22 +1710,22 @@ export default function TeamPage() {
                           )}
                         </td>
                         <td className="py-3 px-4 text-right text-purple-600">
-                          {formatRM(staff.focused_1)}
+                          {renderValueWithTarget(staff.focused_1, staff.targets?.focused_1)}
                         </td>
                         <td className="py-3 px-4 text-right text-orange-600">
-                          {formatRM(staff.focused_2)}
+                          {renderValueWithTarget(staff.focused_2, staff.targets?.focused_2)}
                         </td>
                         <td className="py-3 px-4 text-right text-pink-600">
-                          {formatRM(staff.focused_3)}
+                          {renderValueWithTarget(staff.focused_3, staff.targets?.focused_3)}
                         </td>
                         <td className="py-3 px-4 text-right text-teal-600">
-                          {formatRM(staff.pwp)}
+                          {renderValueWithTarget(staff.pwp, staff.targets?.pwp)}
                         </td>
                         <td className="py-3 px-4 text-right text-red-600">
-                          {formatRM(staff.clearance)}
+                          {renderValueWithTarget(staff.clearance, staff.targets?.clearance)}
                         </td>
                         <td className="py-3 px-4 text-right text-indigo-600">
-                          {staff.transactions.toLocaleString()}
+                          {renderValueWithTarget(staff.transactions, staff.targets?.transactions, 'number')}
                         </td>
                         <td className="py-3 px-4 text-right text-teal-700 font-medium">
                           {staff.total_commission ? formatRM(staff.total_commission) : '-'}
