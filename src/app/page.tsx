@@ -330,9 +330,10 @@ export default function Dashboard() {
         Showing data from {new Date(dateRange.start).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })} to {new Date(dateRange.end).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
       </div>
 
-      {/* Commission Summary (Base + BMS Tier Incentive) */}
+      {/* Commission Summary (Base + BMS Tier Incentive) — merged card */}
       {data && (
         <div className="bg-gradient-to-r from-green-500 to-teal-500 rounded-xl p-6 text-white">
+          {/* Total Commission */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
               <p className="text-green-100 text-sm font-medium">Total Commission ({dateRange.label})</p>
@@ -346,7 +347,9 @@ export default function Dashboard() {
             )}
             <DollarSign className="w-12 h-12 text-green-200 opacity-50" />
           </div>
-          <div className="flex gap-4 text-sm">
+
+          {/* Breakdown: Base + Tier */}
+          <div className="flex gap-4 text-sm mb-4">
             <div className="bg-white/15 rounded-lg px-3 py-2 flex-1">
               <p className="text-green-100 text-xs">Product Sales Incentive</p>
               <p className="font-semibold">{formatRM(data.kpis.commission || 0)}</p>
@@ -356,6 +359,88 @@ export default function Dashboard() {
               <p className="font-semibold">{formatRM(data.kpis.bms_incentive || 0)}</p>
             </div>
           </div>
+
+          {/* BMS Tier Progress */}
+          {data.kpis.bms_hs !== undefined && (() => {
+            const staffBms = data.kpis.bms_hs || 0
+            const outletBms = data.kpis.outlet_bms_hs || 0
+
+            const qualifiedOutletTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
+            const nextTier = qualifiedOutletTier
+              ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedOutletTier) - 1]
+              : BMS_TIERS[BMS_TIERS.length - 1]
+
+            const staffQualified = qualifiedOutletTier && staffBms >= qualifiedOutletTier.staffMin
+            const staffProgressTarget = qualifiedOutletTier?.staffMin || nextTier?.staffMin || 3500
+            const staffProgress = Math.min(100, Math.round((staffBms / staffProgressTarget) * 100))
+
+            const outletProgressTarget = nextTier?.outletMin || 60000
+            const outletProgress = Math.min(100, Math.round((outletBms / outletProgressTarget) * 100))
+
+            return (
+              <div className="border-t border-white/20 pt-4 space-y-3">
+                <p className="text-green-100 text-xs font-medium uppercase tracking-wide">BMS Tier Progress</p>
+
+                {/* BMS Sales Summary */}
+                <div className="flex gap-4 text-sm">
+                  <div className="bg-white/10 rounded-lg px-3 py-2 flex-1">
+                    <p className="text-green-100 text-xs">Your BMS Sales</p>
+                    <p className="font-semibold">{formatRM(staffBms)}</p>
+                  </div>
+                  <div className="bg-white/10 rounded-lg px-3 py-2 flex-1">
+                    <p className="text-green-100 text-xs">Outlet BMS Total</p>
+                    <p className="font-semibold">{formatRM(outletBms)}</p>
+                  </div>
+                </div>
+
+                {/* Outlet Progress */}
+                <div>
+                  <div className="flex justify-between text-xs text-green-100 mb-1">
+                    <span>Outlet Min: {formatRM(outletProgressTarget)}</span>
+                    <span>{outletProgress}%</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${outletProgress >= 100 ? 'bg-yellow-300' : 'bg-white/50'}`}
+                      style={{ width: `${Math.min(outletProgress, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Staff Progress */}
+                {qualifiedOutletTier && (
+                  <div>
+                    <div className="flex justify-between text-xs text-green-100 mb-1">
+                      <span>Staff Min: {formatRM(staffProgressTarget)}</span>
+                      <span>{staffProgress}%</span>
+                    </div>
+                    <div className="w-full bg-white/20 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${staffProgress >= 100 ? 'bg-yellow-300' : 'bg-white/50'}`}
+                        style={{ width: `${Math.min(staffProgress, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Tier Status Disclaimer */}
+                {qualifiedOutletTier && staffQualified ? (
+                  <p className="text-sm text-yellow-200 font-medium">
+                    You qualify for RM{qualifiedOutletTier.incentive} incentive!
+                    {nextTier && ` Next tier: RM${nextTier.incentive} (Outlet ${formatRM(nextTier.outletMin)}, Staff ${formatRM(nextTier.staffMin)})`}
+                  </p>
+                ) : qualifiedOutletTier ? (
+                  <p className="text-sm text-yellow-200">
+                    Outlet qualifies! You need {formatRM(qualifiedOutletTier.staffMin - staffBms)} more to earn RM{qualifiedOutletTier.incentive}.
+                  </p>
+                ) : nextTier ? (
+                  <p className="text-sm text-green-200">
+                    Next tier: Outlet needs {formatRM(nextTier.outletMin)}, Staff needs {formatRM(nextTier.staffMin)} for RM{nextTier.incentive} incentive.
+                  </p>
+                ) : null}
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -437,93 +522,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* BMS Tier Progress */}
-      {data && data.kpis.bms_hs !== undefined && (
-        <div className="card">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">BMS Tier Progress</h2>
-          {(() => {
-            const staffBms = data.kpis.bms_hs || 0
-            const outletBms = data.kpis.outlet_bms_hs || 0
-
-            // Find highest tier that outlet qualifies for
-            const qualifiedOutletTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
-            // Find next tier to achieve
-            const nextTier = qualifiedOutletTier
-              ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedOutletTier) - 1]
-              : BMS_TIERS[BMS_TIERS.length - 1]
-
-            // Check if staff qualifies for the tier
-            const staffQualified = qualifiedOutletTier && staffBms >= qualifiedOutletTier.staffMin
-            const staffProgressTarget = qualifiedOutletTier?.staffMin || nextTier?.staffMin || 3500
-            const staffProgress = Math.min(100, Math.round((staffBms / staffProgressTarget) * 100))
-
-            // Outlet progress towards next tier
-            const outletProgressTarget = nextTier?.outletMin || 60000
-            const outletProgress = Math.min(100, Math.round((outletBms / outletProgressTarget) * 100))
-
-            return (
-              <div className="space-y-4">
-                {/* BMS Amounts */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-emerald-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Your BMS Sales</p>
-                    <p className="text-lg font-bold text-emerald-600">{formatRM(staffBms)}</p>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <p className="text-xs text-gray-500 mb-1">Outlet BMS Total</p>
-                    <p className="text-lg font-bold text-blue-600">{formatRM(outletBms)}</p>
-                  </div>
-                </div>
-
-                {/* Outlet Progress */}
-                <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Outlet Min: {formatRM(outletProgressTarget)}</span>
-                    <span>{outletProgress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full ${outletProgress >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                      style={{ width: `${Math.min(outletProgress, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Staff Progress */}
-                {qualifiedOutletTier && (
-                  <div>
-                    <div className="flex justify-between text-xs text-gray-500 mb-1">
-                      <span>Staff Min: {formatRM(staffProgressTarget)}</span>
-                      <span>{staffProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className={`h-2 rounded-full ${staffProgress >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                        style={{ width: `${Math.min(staffProgress, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Tier Status */}
-                {qualifiedOutletTier && staffQualified ? (
-                  <p className="text-sm text-emerald-600 font-medium">
-                    You qualify for RM{qualifiedOutletTier.incentive} incentive!
-                  </p>
-                ) : qualifiedOutletTier ? (
-                  <p className="text-sm text-amber-600">
-                    Outlet qualifies! You need {formatRM(qualifiedOutletTier.staffMin - staffBms)} more to earn RM{qualifiedOutletTier.incentive} incentive.
-                  </p>
-                ) : nextTier ? (
-                  <p className="text-sm text-gray-600">
-                    Next tier: Outlet needs {formatRM(nextTier.outletMin)}, Staff needs {formatRM(nextTier.staffMin)} for RM{nextTier.incentive} incentive.
-                  </p>
-                ) : null}
-              </div>
-            )
-          })()}
-        </div>
-      )}
+      {/* BMS Tier Progress card removed — now merged into Commission card above */}
 
       {/* Sales Chart */}
       {dailyData.length > 0 && (
