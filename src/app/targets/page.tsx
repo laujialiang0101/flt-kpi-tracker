@@ -14,7 +14,7 @@ export default function TargetsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('individual')
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string; errors?: string[] } | null>(null)
+  const [result, setResult] = useState<{ success: boolean; message: string; errors?: string[]; warnings?: string[] } | null>(null)
   const [downloading, setDownloading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -93,7 +93,8 @@ export default function TargetsPage() {
         setResult({
           success: true,
           message: `Successfully uploaded ${response.rows_processed} ${activeTab === 'individual' ? 'staff' : 'outlet'} targets`,
-          errors: response.errors
+          errors: response.errors,
+          warnings: response.warnings
         })
         setFile(null)
         if (fileInputRef.current) {
@@ -303,10 +304,21 @@ export default function TargetsPage() {
               <p className={result.success ? 'text-green-800' : 'text-red-800'}>
                 {result.message}
               </p>
+              {result.warnings && result.warnings.length > 0 && (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm font-semibold text-amber-800">Unrecognised Staff IDs ({result.warnings.length}):</p>
+                  <p className="text-xs text-amber-600 mt-1">These targets were uploaded but won&apos;t match any staff. Please check for typos in the Excel and re-upload with corrected IDs.</p>
+                  <ul className="list-disc list-inside text-sm text-amber-700 mt-2">
+                    {result.warnings.map((warn, idx) => (
+                      <li key={idx}>{warn}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {result.errors && result.errors.length > 0 && (
                 <div className="mt-2">
-                  <p className="text-sm font-medium text-yellow-700">Warnings:</p>
-                  <ul className="list-disc list-inside text-sm text-yellow-600 mt-1">
+                  <p className="text-sm font-medium text-red-700">Row errors:</p>
+                  <ul className="list-disc list-inside text-sm text-red-600 mt-1">
                     {result.errors.map((err, idx) => (
                       <li key={idx}>{err}</li>
                     ))}

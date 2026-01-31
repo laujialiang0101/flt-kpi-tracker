@@ -50,6 +50,11 @@ interface StaffMember {
   transactions: number
   rank: number | null
   bms_hs?: number
+  commission?: number
+  bms_incentive?: number
+  total_commission?: number
+  target_total_sales?: number
+  target_progress?: number | null
 }
 
 interface TeamSummary {
@@ -132,6 +137,8 @@ interface OutletPerformanceItem {
   bms_hs: number
   transactions: number
   rank: number
+  target_total_sales?: number
+  target_progress?: number | null
 }
 
 interface OutletPerformanceData {
@@ -1182,13 +1189,14 @@ export default function TeamPage() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[1400px]">
+                  <table className="w-full min-w-[1500px]">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Target %</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
@@ -1229,6 +1237,21 @@ export default function TeamPage() {
                           </td>
                           <td className="py-3 px-4 text-right font-medium text-gray-900">
                             {formatRM(outlet.total_sales)}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {outlet.target_progress !== null && outlet.target_progress !== undefined ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16 bg-gray-200 rounded-full h-2">
+                                  <div className={`h-2 rounded-full ${outlet.target_progress >= 100 ? 'bg-green-500' : outlet.target_progress >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                       style={{ width: `${Math.min(outlet.target_progress, 100)}%` }} />
+                                </div>
+                                <span className={`text-xs font-medium ${outlet.target_progress >= 100 ? 'text-green-600' : outlet.target_progress >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                  {Math.round(outlet.target_progress)}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-300 text-xs">No target</span>
+                            )}
                           </td>
                           <td className="py-3 px-4 text-right text-emerald-600">
                             {formatRM(outlet.gross_profit)}
@@ -1603,7 +1626,7 @@ export default function TeamPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1200px]">
+                <table className="w-full min-w-[1400px]">
                   <thead>
                     <tr className="border-b border-gray-200 bg-gray-50">
                       <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
@@ -1612,6 +1635,7 @@ export default function TeamPage() {
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
                       )}
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Target %</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
@@ -1620,6 +1644,7 @@ export default function TeamPage() {
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
                       <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Comm.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1654,6 +1679,21 @@ export default function TeamPage() {
                         <td className="py-3 px-4 text-right font-medium text-gray-900">
                           {formatRM(staff.total_sales)}
                         </td>
+                        <td className="py-3 px-4 text-right">
+                          {staff.target_progress !== null && staff.target_progress !== undefined ? (
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 bg-gray-200 rounded-full h-2">
+                                <div className={`h-2 rounded-full ${staff.target_progress >= 100 ? 'bg-green-500' : staff.target_progress >= 80 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                     style={{ width: `${Math.min(staff.target_progress, 100)}%` }} />
+                              </div>
+                              <span className={`text-xs font-medium ${staff.target_progress >= 100 ? 'text-green-600' : staff.target_progress >= 80 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                {Math.round(staff.target_progress)}%
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-300 text-xs">No target</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-right text-green-600">
                           {formatRM(staff.house_brand)}
                         </td>
@@ -1687,6 +1727,9 @@ export default function TeamPage() {
                         </td>
                         <td className="py-3 px-4 text-right text-indigo-600">
                           {staff.transactions.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-right text-teal-700 font-medium">
+                          {staff.total_commission ? formatRM(staff.total_commission) : '-'}
                         </td>
                       </tr>
                     ))}
