@@ -365,17 +365,31 @@ export default function Dashboard() {
             const staffBms = data.kpis.bms_hs || 0
             const outletBms = data.kpis.outlet_bms_hs || 0
 
-            const qualifiedOutletTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
-            const nextTier = qualifiedOutletTier
-              ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedOutletTier) - 1]
-              : BMS_TIERS[BMS_TIERS.length - 1]
+            // All tiers the outlet qualifies for (ordered highest to lowest)
+            const outletQualifiedTiers = BMS_TIERS.filter(t => outletBms >= t.outletMin)
+            // Highest tier where BOTH outlet and staff qualify (current earned tier)
+            const earnedTier = outletQualifiedTiers.find(t => staffBms >= t.staffMin)
+            // Nearest achievable tier = lowest staff_min among outlet-qualified tiers where staff doesn't qualify yet
+            const nearestTier = !earnedTier && outletQualifiedTiers.length > 0
+              ? outletQualifiedTiers[outletQualifiedTiers.length - 1]  // last = lowest staff_min
+              : null
+            // Next tier above current earned tier (for "aim higher" message)
+            const nextAboveEarned = earnedTier
+              ? outletQualifiedTiers[outletQualifiedTiers.indexOf(earnedTier) - 1] || null
+              : null
+            // Next outlet tier (if outlet doesn't qualify for any yet)
+            const nextOutletTier = outletQualifiedTiers.length === 0
+              ? BMS_TIERS[BMS_TIERS.length - 1]  // lowest tier
+              : null
 
-            const staffQualified = qualifiedOutletTier && staffBms >= qualifiedOutletTier.staffMin
-            const staffProgressTarget = qualifiedOutletTier?.staffMin || nextTier?.staffMin || 3500
-            const staffProgress = Math.min(100, Math.round((staffBms / staffProgressTarget) * 100))
+            // Staff progress bar targets the nearest achievable tier
+            const staffTarget = nearestTier?.staffMin || earnedTier?.staffMin || nextOutletTier?.staffMin || 3500
+            const staffProgress = Math.min(100, Math.round((staffBms / staffTarget) * 100))
 
-            const outletProgressTarget = nextTier?.outletMin || 60000
-            const outletProgress = Math.min(100, Math.round((outletBms / outletProgressTarget) * 100))
+            // Outlet progress targets the next unmet outlet tier
+            const outletTarget = nextOutletTier?.outletMin
+              || (outletQualifiedTiers.length > 0 ? (BMS_TIERS[BMS_TIERS.indexOf(outletQualifiedTiers[0]) - 1]?.outletMin || 60000) : 60000)
+            const outletProgress = Math.min(100, Math.round((outletBms / outletTarget) * 100))
 
             return (
               <div className="border-t border-white/20 pt-4 space-y-3">
@@ -396,7 +410,7 @@ export default function Dashboard() {
                 {/* Outlet Progress */}
                 <div>
                   <div className="flex justify-between text-xs text-green-100 mb-1">
-                    <span>Outlet Min: {formatRM(outletProgressTarget)}</span>
+                    <span>Outlet Target: {formatRM(outletTarget)}</span>
                     <span>{outletProgress}%</span>
                   </div>
                   <div className="w-full bg-white/20 rounded-full h-2">
@@ -407,11 +421,11 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Staff Progress */}
-                {qualifiedOutletTier && (
+                {/* Staff Progress — shown when outlet qualifies for at least one tier */}
+                {outletQualifiedTiers.length > 0 && (
                   <div>
                     <div className="flex justify-between text-xs text-green-100 mb-1">
-                      <span>Staff Min: {formatRM(staffProgressTarget)}</span>
+                      <span>Your Target: {formatRM(staffTarget)} (for RM{nearestTier?.incentive || earnedTier?.incentive})</span>
                       <span>{staffProgress}%</span>
                     </div>
                     <div className="w-full bg-white/20 rounded-full h-2">
@@ -424,18 +438,33 @@ export default function Dashboard() {
                 )}
 
                 {/* Tier Status Disclaimer */}
-                {qualifiedOutletTier && staffQualified ? (
-                  <p className="text-sm text-yellow-200 font-medium">
-                    You qualify for RM{qualifiedOutletTier.incentive} incentive!
-                    {nextTier && ` Next tier: RM${nextTier.incentive} (Outlet ${formatRM(nextTier.outletMin)}, Staff ${formatRM(nextTier.staffMin)})`}
-                  </p>
-                ) : qualifiedOutletTier ? (
-                  <p className="text-sm text-yellow-200">
-                    Outlet qualifies! You need {formatRM(qualifiedOutletTier.staffMin - staffBms)} more to earn RM{qualifiedOutletTier.incentive}.
-                  </p>
-                ) : nextTier ? (
+                {earnedTier ? (
+                  <div className="text-sm space-y-1">
+                    <p className="text-yellow-200 font-medium">
+                      You qualify for RM{earnedTier.incentive} incentive!
+                    </p>
+                    {nextAboveEarned && (
+                      <p className="text-green-200">
+                        Next tier: Hit {formatRM(nextAboveEarned.staffMin)} BMS sales for RM{nextAboveEarned.incentive} incentive.
+                      </p>
+                    )}
+                  </div>
+                ) : nearestTier ? (
+                  <div className="text-sm space-y-1">
+                    <p className="text-yellow-200">
+                      You need {formatRM(nearestTier.staffMin - staffBms)} more to earn RM{nearestTier.incentive} incentive (target: {formatRM(nearestTier.staffMin)}).
+                    </p>
+                    {outletQualifiedTiers.length > 1 && (
+                      <p className="text-green-200 text-xs">
+                        Higher tiers available: {outletQualifiedTiers.slice(0, -1).reverse().map(t =>
+                          `RM${t.incentive} at ${formatRM(t.staffMin)}`
+                        ).join(', ')}
+                      </p>
+                    )}
+                  </div>
+                ) : nextOutletTier ? (
                   <p className="text-sm text-green-200">
-                    Next tier: Outlet needs {formatRM(nextTier.outletMin)}, Staff needs {formatRM(nextTier.staffMin)} for RM{nextTier.incentive} incentive.
+                    Next tier: Outlet needs {formatRM(nextOutletTier.outletMin)}, Staff needs {formatRM(nextOutletTier.staffMin)} for RM{nextOutletTier.incentive} incentive.
                   </p>
                 ) : null}
               </div>
