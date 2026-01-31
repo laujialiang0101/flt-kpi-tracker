@@ -82,29 +82,6 @@ interface TeamSummary {
   bms_hs?: number
 }
 
-// BMS Tier Commission structure
-const BMS_TIERS = [
-  { outletMin: 60000, staffMin: 12000, incentive: 840 },
-  { outletMin: 60000, staffMin: 10000, incentive: 600 },
-  { outletMin: 50000, staffMin: 8500, incentive: 500 },
-  { outletMin: 40000, staffMin: 7000, incentive: 400 },
-  { outletMin: 30000, staffMin: 6000, incentive: 300 },
-  { outletMin: 25000, staffMin: 5000, incentive: 200 },
-  { outletMin: 20000, staffMin: 4000, incentive: 100 },
-  { outletMin: 15000, staffMin: 3500, incentive: 50 },
-]
-
-// Helper to get BMS tier info
-const getBmsTierInfo = (outletBms: number, staffBms: number) => {
-  for (const tier of BMS_TIERS) {
-    if (outletBms >= tier.outletMin && staffBms >= tier.staffMin) {
-      return { qualified: true, incentive: tier.incentive, tier }
-    }
-  }
-  // Find next achievable tier
-  const nextTier = [...BMS_TIERS].reverse().find(t => outletBms < t.outletMin || staffBms < t.staffMin)
-  return { qualified: false, incentive: 0, nextTier }
-}
 
 interface TeamData {
   outlet_id: string
@@ -998,44 +975,6 @@ export default function TeamPage() {
                         {formatRM(outletPerformance.summary.bms_hs)}
                       </span>
                     </div>
-                    {/* Show tier progress only for single outlet */}
-                    {selectedOutlets.length === 1 && (() => {
-                      const outletBms = outletPerformance.summary.bms_hs!
-                      const qualifiedTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
-                      const nextTier = qualifiedTier
-                        ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedTier) - 1]
-                        : BMS_TIERS[BMS_TIERS.length - 1]
-                      const progressToNext = nextTier
-                        ? Math.min(100, Math.round((outletBms / nextTier.outletMin) * 100))
-                        : 100
-
-                      return (
-                        <>
-                          {/* Outlet threshold progress */}
-                          <div className="mt-2">
-                            <div className="flex justify-between text-xs text-gray-500 mb-1">
-                              <span>Outlet Min: {formatRM(nextTier?.outletMin || 60000)}</span>
-                              <span>{progressToNext}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-1.5">
-                              <div
-                                className={`h-1.5 rounded-full ${progressToNext >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                                style={{ width: `${Math.min(progressToNext, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                          {qualifiedTier ? (
-                            <p className="text-xs text-emerald-600 mt-2">
-                              Outlet qualifies! Staff need ≥{formatRM(qualifiedTier.staffMin)} for RM{qualifiedTier.incentive} incentive
-                            </p>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-2">
-                              Need {formatRM((nextTier?.outletMin || 15000) - outletBms)} more to unlock tier commission
-                            </p>
-                          )}
-                        </>
-                      )
-                    })()}
                     {selectedOutlets.length > 1 && (
                       <p className="text-xs text-gray-400 mt-1">Combined total from {selectedOutlets.length} outlets</p>
                     )}
@@ -1404,43 +1343,6 @@ export default function TeamPage() {
                       {formatRM(teamData.summary.bms_hs)}
                     </span>
                   </div>
-                  {/* Show tier progress for single outlet or staff users (who can only see their outlet) */}
-                  {(selectedOutlets.length === 1 || !canSelectOutlet) && (() => {
-                    const outletBms = teamData.summary.bms_hs
-                    const qualifiedTier = BMS_TIERS.find(t => outletBms >= t.outletMin)
-                    const nextTier = qualifiedTier
-                      ? BMS_TIERS[BMS_TIERS.indexOf(qualifiedTier) - 1]
-                      : BMS_TIERS[BMS_TIERS.length - 1]
-                    const progressToNext = nextTier
-                      ? Math.min(100, Math.round((outletBms / nextTier.outletMin) * 100))
-                      : 100
-
-                    return (
-                      <>
-                        <div className="mt-2">
-                          <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Outlet Min: {formatRM(nextTier?.outletMin || 60000)}</span>
-                            <span>{progressToNext}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className={`h-1.5 rounded-full ${progressToNext >= 100 ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                              style={{ width: `${Math.min(progressToNext, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                        {qualifiedTier ? (
-                          <p className="text-xs text-emerald-600 mt-2">
-                            Outlet qualifies! Staff need ≥{formatRM(qualifiedTier.staffMin)} for RM{qualifiedTier.incentive} incentive
-                          </p>
-                        ) : (
-                          <p className="text-xs text-gray-400 mt-2">
-                            Need {formatRM((nextTier?.outletMin || 15000) - outletBms)} more to unlock tier commission
-                          </p>
-                        )}
-                      </>
-                    )
-                  })()}
                   {canSelectOutlet && selectedOutlets.length > 1 && (
                     <p className="text-xs text-gray-400 mt-1">Combined total from {selectedOutlets.length} outlets</p>
                   )}
