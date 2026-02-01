@@ -194,11 +194,11 @@ export default function AdminPage() {
 
   // Unique outlets and roles for filters
   const uniqueOutlets = useMemo(() =>
-    [...new Set(staffList.map(s => s.primary_outlet))].filter(Boolean).sort(),
+    Array.from(new Set(staffList.map(s => s.primary_outlet))).filter(Boolean).sort(),
     [staffList]
   )
   const uniqueRoles = useMemo(() =>
-    [...new Set(staffList.map(s => s.role))].filter(Boolean).sort(),
+    Array.from(new Set(staffList.map(s => s.role))).filter(Boolean).sort(),
     [staffList]
   )
 
