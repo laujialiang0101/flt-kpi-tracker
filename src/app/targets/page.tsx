@@ -104,7 +104,12 @@ export default function TargetsPage() {
         setResult({ success: false, message: response.detail || 'Upload failed' })
       }
     } catch (error: any) {
-      setResult({ success: false, message: error.message || 'Upload failed' })
+      const msg = error.message || 'Upload failed'
+      if (msg.toLowerCase().includes('invalid session') || msg.includes('(401)')) {
+        setResult({ success: false, message: 'Session expired. Please log out and log in again, then retry.' })
+      } else {
+        setResult({ success: false, message: msg })
+      }
     } finally {
       setUploading(false)
     }

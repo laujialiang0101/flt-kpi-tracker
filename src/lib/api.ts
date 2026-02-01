@@ -75,7 +75,10 @@ export async function uploadTargets(file: File, token: string) {
     method: 'POST',
     body: formData
   })
-  if (!res.ok) throw new Error('Failed to upload targets')
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || `Upload failed (${res.status})`)
+  }
   return res.json()
 }
 
@@ -142,7 +145,10 @@ export async function uploadOutletTargets(file: File, token: string) {
     method: 'POST',
     body: formData
   })
-  if (!res.ok) throw new Error('Failed to upload outlet targets')
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.detail || `Upload failed (${res.status})`)
+  }
   return res.json()
 }
 
