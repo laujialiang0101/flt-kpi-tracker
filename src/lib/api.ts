@@ -163,6 +163,40 @@ export async function fetchOutletTargets(outletId?: string, outletIds?: string[]
   return res.json()
 }
 
+// Admin APIs
+export async function adminSearchStaff(query: string, token: string) {
+  const params = new URLSearchParams({ q: query, token })
+  const res = await fetch(`${API_URL}/api/v1/admin/staff-search?${params}`)
+  if (!res.ok) throw new Error('Failed to search staff')
+  return res.json()
+}
+
+export async function adminResetPassword(staffCode: string, token: string) {
+  const res = await fetch(`${API_URL}/api/v1/admin/reset-password?token=${token}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ staff_code: staffCode })
+  })
+  if (!res.ok) throw new Error('Failed to reset password')
+  return res.json()
+}
+
+export async function adminGetSyncStatus(token: string, checkDate?: string) {
+  const params = new URLSearchParams({ token })
+  if (checkDate) params.append('check_date', checkDate)
+  const res = await fetch(`${API_URL}/api/v1/admin/sync-status?${params}`)
+  if (!res.ok) throw new Error('Failed to fetch sync status')
+  return res.json()
+}
+
+export async function adminGetStaffExport(token: string, format: 'json' | 'xlsx' = 'json') {
+  const params = new URLSearchParams({ token, format })
+  const res = await fetch(`${API_URL}/api/v1/admin/staff-export?${params}`)
+  if (!res.ok) throw new Error('Failed to export staff')
+  if (format === 'xlsx') return res.blob()
+  return res.json()
+}
+
 // Outlet Performance API
 export async function fetchOutletPerformance(outletIds?: string[], startDate?: string, endDate?: string) {
   const params = new URLSearchParams()

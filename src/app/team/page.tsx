@@ -231,7 +231,7 @@ export default function TeamPage() {
 
   // Check if user has multiple outlets (Admin/OOM/Area Manager)
   const hasMultipleOutlets = user?.allowed_outlets && user.allowed_outlets.length > 1
-  const canSelectOutlet = ['admin', 'operations_manager', 'area_manager'].includes(user?.role || '')
+  const canSelectOutlet = user?.permissions?.can_select_outlet ?? false
 
 
   // Fetch regions data from API

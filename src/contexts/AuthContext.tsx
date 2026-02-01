@@ -23,6 +23,7 @@ interface User {
     can_upload_targets: boolean
     can_view_all_staff: boolean
     can_manage_roles: boolean
+    can_select_outlet: boolean
   }
   region: string | null  // Region code (R1-R8) for retail staff
   area_manager_id: string | null  // Staff ID of area manager

@@ -36,6 +36,11 @@ export default function Navbar() {
     navLinks.push({ href: '/targets', label: 'Targets' })
   }
 
+  // Add admin link for administrators
+  if (user?.permissions?.can_manage_roles) {
+    navLinks.push({ href: '/admin', label: 'Admin' })
+  }
+
   if (isLoading) {
     return (
       <nav className="bg-white shadow-sm border-b border-gray-200">
