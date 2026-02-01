@@ -245,7 +245,7 @@ export default function AdminPage() {
   const handleDragEnd = () => { setDragIdx(null); setDragOverIdx(null) }
 
   const toggleCol = (key: string) => {
-    const next = new Set(visibleCols)
+    const next = new Set(Array.from(visibleCols))
     if (next.has(key)) next.delete(key)
     else next.add(key)
     setVisibleCols(next)
