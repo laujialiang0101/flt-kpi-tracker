@@ -441,7 +441,7 @@ export default function AdminPage() {
                         })}
                         <td className="px-4 py-2.5 text-xs text-gray-500 border-l border-gray-200">
                           {Object.values(tables)[0]?.checked_at
-                            ? new Date(Object.values(tables)[0].checked_at).toLocaleTimeString()
+                            ? new Date(Object.values(tables)[0].checked_at as string).toLocaleTimeString()
                             : '-'}
                         </td>
                       </tr>
