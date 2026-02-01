@@ -105,8 +105,8 @@ export default function AdminPage() {
   const [sortDir, setSortDir] = useState<SortDir>(null)
 
   // Column management state
-  const [columnOrder, setColumnOrder] = useState<string[]>(() => ALL_COLUMNS.map(c => c.key))
-  const [visibleCols, setVisibleCols] = useState<Set<string>>(() => new Set(DEFAULT_VISIBLE))
+  const [columnOrder, setColumnOrder] = useState<(keyof StaffExportRow)[]>(() => ALL_COLUMNS.map(c => c.key))
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(() => new Set(DEFAULT_VISIBLE as string[]))
   const [showColPanel, setShowColPanel] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
