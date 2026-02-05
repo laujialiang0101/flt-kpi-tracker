@@ -168,7 +168,7 @@ export default function TeamPage() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const datePickerRef = useRef<HTMLDivElement>(null)
 
-  // Sort & filter state
+  // Sort & filter state for staff
   type SortField = 'staff_name' | 'outlet_id' | 'total_sales' | 'house_brand' | 'bms_hs'
     | 'focused_1' | 'focused_2' | 'focused_3' | 'pwp' | 'clearance' | 'transactions' | 'total_commission'
   type SortDirection = 'asc' | 'desc'
@@ -176,6 +176,12 @@ export default function TeamPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [searchQuery, setSearchQuery] = useState('')
   const [picOnly, setPicOnly] = useState(false)
+
+  // Sort state for outlet performance table
+  type OutletSortField = 'outlet_name' | 'staff_count' | 'total_sales' | 'gross_profit' | 'house_brand' | 'bms_hs'
+    | 'focused_1' | 'focused_2' | 'focused_3' | 'pwp' | 'clearance' | 'transactions'
+  const [outletSortField, setOutletSortField] = useState<OutletSortField>('total_sales')
+  const [outletSortDirection, setOutletSortDirection] = useState<SortDirection>('desc')
 
   // Calculate date range based on selection
   const getDateRange = (): DateRange => {
@@ -515,7 +521,7 @@ export default function TeamPage() {
     }
   }
 
-  // Sortable header component
+  // Sortable header component for staff
   const SortableHeader = ({ field, label, align = 'right' }: { field: SortField; label: string; align?: 'left' | 'right' }) => (
     <th
       className={`py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
@@ -533,6 +539,53 @@ export default function TeamPage() {
       </div>
     </th>
   )
+
+  // Outlet sort handler
+  const handleOutletSort = (field: OutletSortField) => {
+    if (outletSortField === field) {
+      setOutletSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setOutletSortField(field)
+      setOutletSortDirection(field === 'outlet_name' ? 'asc' : 'desc')
+    }
+  }
+
+  // Sortable header component for outlets
+  const OutletSortableHeader = ({ field, label, align = 'right' }: { field: OutletSortField; label: string; align?: 'left' | 'right' }) => (
+    <th
+      className={`py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer hover:text-gray-700 select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+      onClick={() => handleOutletSort(field)}
+    >
+      <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
+        <span>{label}</span>
+        {outletSortField === field ? (
+          outletSortDirection === 'asc'
+            ? <ChevronUp className="w-3 h-3 text-primary-600" />
+            : <ChevronDown className="w-3 h-3 text-primary-600" />
+        ) : (
+          <ChevronDown className="w-3 h-3 text-gray-300" />
+        )}
+      </div>
+    </th>
+  )
+
+  // Sorted outlet list
+  const sortedOutlets = useMemo(() => {
+    if (!outletPerformance?.outlets) return []
+    return [...outletPerformance.outlets].sort((a, b) => {
+      const aVal = a[outletSortField]
+      const bVal = b[outletSortField]
+      if (aVal == null && bVal == null) return 0
+      if (aVal == null) return 1
+      if (bVal == null) return -1
+      if (outletSortField === 'outlet_name') {
+        const cmp = String(aVal).localeCompare(String(bVal))
+        return outletSortDirection === 'asc' ? cmp : -cmp
+      }
+      const cmp = (aVal as number) - (bVal as number)
+      return outletSortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [outletPerformance?.outlets, outletSortField, outletSortDirection])
 
   // Filtered and sorted staff list
   const filteredAndSortedStaff = useMemo(() => {
@@ -1237,23 +1290,23 @@ export default function TeamPage() {
                   <table className="w-full min-w-[1400px]">
                     <thead>
                       <tr className="border-b border-gray-200 bg-gray-50">
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Rank</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Outlet</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Staff</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Total Sales</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Gross Profit</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">House Brand</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">BMS HS</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 1</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 2</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Focused 3</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">PWP</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Clearance</th>
-                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Trans.</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">#</th>
+                        <OutletSortableHeader field="outlet_name" label="Outlet" align="left" />
+                        <OutletSortableHeader field="staff_count" label="Staff" />
+                        <OutletSortableHeader field="total_sales" label="Total Sales" />
+                        <OutletSortableHeader field="gross_profit" label="Gross Profit" />
+                        <OutletSortableHeader field="house_brand" label="House Brand" />
+                        <OutletSortableHeader field="bms_hs" label="BMS HS" />
+                        <OutletSortableHeader field="focused_1" label="Focused 1" />
+                        <OutletSortableHeader field="focused_2" label="Focused 2" />
+                        <OutletSortableHeader field="focused_3" label="Focused 3" />
+                        <OutletSortableHeader field="pwp" label="PWP" />
+                        <OutletSortableHeader field="clearance" label="Clearance" />
+                        <OutletSortableHeader field="transactions" label="Trans." />
                       </tr>
                     </thead>
                     <tbody>
-                      {outletPerformance.outlets.map((outlet, index) => (
+                      {sortedOutlets.map((outlet, index) => (
                         <tr
                           key={outlet.outlet_id}
                           className={`border-b border-gray-100 hover:bg-gray-50 ${
